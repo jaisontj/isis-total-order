@@ -45,6 +45,13 @@ struct addrinfo *get_addr_info(const char* hostname, const char *port, struct ad
 	return servinfo;
 }
 
+string get_socket_ip(addrinfo *p) {
+	char ipstr[INET6_ADDRSTRLEN];
+	void *addr = (char *)ipstr;
+	inet_ntop(p->ai_family, addr, ipstr, sizeof ipstr);
+	return ipstr;
+}
+
 
 struct SocketInfo create_first_possible_socket(struct addrinfo *servinfo, int should_reuse_addr) {
 	int socket_fd;
@@ -59,6 +66,11 @@ struct SocketInfo create_first_possible_socket(struct addrinfo *servinfo, int sh
 		break;
 	}
 
+	if (socket_fd == -1 || p == NULL) {
+		perror("Unable to create socket");
+		exit(1);
+	}
+
 	if (should_reuse_addr == 1) {
 		int err = setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &should_reuse_addr, sizeof(int));
 		if (err) {
@@ -67,11 +79,7 @@ struct SocketInfo create_first_possible_socket(struct addrinfo *servinfo, int sh
 		}
 	}
 
-	if (p != NULL) {
-		char ipstr[INET6_ADDRSTRLEN];
-		void *addr = (char *)ipstr;
-		inet_ntop(p->ai_family, addr, ipstr, sizeof ipstr);
-		cout<<"Socket created with ip: "<<ipstr<<endl;
-	}
+	debug_print("Socket created with ip: " + get_socket_ip(p));
+
 	return (SocketInfo) { socket_fd, p };
 }
