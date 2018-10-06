@@ -8,7 +8,7 @@
 #include "custom_types.h"
 using namespace std;
 
-bool DEBUG = true;
+bool DEBUG = false;
 
 void debug_print(string message) {
 	if (DEBUG) cout<<message<<endl;
@@ -23,7 +23,7 @@ CommandArgs parse_cmg_args(int argc, char* argv[]) {
 	int opt, msg_count, temp_port;
 	const char *port = NULL;
 	string filepath;
-	while((opt = getopt(argc, argv, "p:h:c:")) != -1) {
+	while((opt = getopt(argc, argv, "p:h:c:d")) != -1) {
 		switch(opt) {
 			case 'p':
 				temp_port = atoi(optarg);
@@ -39,6 +39,9 @@ CommandArgs parse_cmg_args(int argc, char* argv[]) {
 			case 'c':
 				msg_count = atoi(optarg);
 				break;
+			case 'd':
+				DEBUG = true;
+				break;
 			default:
 				show_usage_and_exit();
 				break;
@@ -52,7 +55,7 @@ CommandArgs parse_cmg_args(int argc, char* argv[]) {
 
 vector<FileLineContent> get_file_content(string filepath) {
 	string line_content;
-	int line_num = 0;
+	uint32_t line_num = 0;
 	vector<FileLineContent> file_content;
 	ifstream file (filepath);
 	if (file.is_open()) {
@@ -88,3 +91,12 @@ int get_id_from_file_content(vector<FileLineContent> file_content) {
 	}
 	return 0;
 }
+
+/**Assumption: id is the same as linenum on file**/
+string get_hostname_from_id(vector<FileLineContent> file_content, uint32_t id) {
+	for (auto const &line: file_content) {
+		if (line.num == id) return line.content;
+	}
+	return "";
+}
+

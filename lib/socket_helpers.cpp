@@ -1,4 +1,5 @@
 #include <iostream>
+#include <unistd.h>
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <cstring>
@@ -81,3 +82,30 @@ struct SocketInfo create_first_possible_socket(struct addrinfo *servinfo, int sh
 
 	return (SocketInfo) { socket_fd, p };
 }
+
+int send_message_to_host(
+		const char *hostname,
+		const char *port,
+		void *message,
+		size_t message_size
+		) {
+	struct addrinfo hints = init_dgram_hints();
+	struct addrinfo *servinfo = get_addr_info(hostname, port, &hints);
+
+	SocketInfo s_info = create_first_possible_socket(servinfo, 1);
+	int socket_fd = s_info.fd;
+	struct addrinfo *p = s_info.addr;
+	int sent_bytes = sendto(socket_fd, message, message_size, 0, p->ai_addr, p->ai_addrlen);
+	freeaddrinfo(servinfo);
+	close(socket_fd);
+	return sent_bytes;
+}
+
+string get_packet_address(sockaddr_storage recv_addr) {
+	char s[INET6_ADDRSTRLEN];
+	inet_ntop(recv_addr.ss_family, get_in_addr((struct sockaddr *)&recv_addr), s, sizeof(s));
+	cout<<"Listener: got packet from "<<s<<endl;
+	return s;
+}
+
+
