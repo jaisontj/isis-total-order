@@ -36,8 +36,6 @@ void *get_in_addr(struct sockaddr *sa) {
 
 struct addrinfo *get_addr_info(const char* hostname, const char *port, struct addrinfo *hints) {
 	struct addrinfo *servinfo;
-	string h_name = hostname == NULL ? "NULL" : string(hostname);
-	debug_print("\nget_addr_info: \n\tTrying to resolve for: Hostname: " + h_name + "  Port: " + port);
 	int rv = getaddrinfo(hostname, port, hints, &servinfo);
 	if (rv != 0) {
 		std::cout<<"getaddrinfo error: "<<gai_strerror(rv)<<std::endl;
