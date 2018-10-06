@@ -46,7 +46,7 @@ struct addrinfo *get_addr_info(const char* hostname, const char *port, struct ad
 }
 
 
-struct socket_info create_first_possible_socket(struct addrinfo *servinfo, int should_reuse_addr) {
+struct SocketInfo create_first_possible_socket(struct addrinfo *servinfo, int should_reuse_addr) {
 	int socket_fd;
 	struct addrinfo *p;
 	//Loop through all results to make a socket
@@ -73,5 +73,5 @@ struct socket_info create_first_possible_socket(struct addrinfo *servinfo, int s
 		inet_ntop(p->ai_family, addr, ipstr, sizeof ipstr);
 		cout<<"Socket created with ip: "<<ipstr<<endl;
 	}
-	return (socket_info) { socket_fd, p };
+	return (SocketInfo) { socket_fd, p };
 }

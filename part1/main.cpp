@@ -37,14 +37,14 @@ void listen_on_socket(int socket_fd) {
 	buffer[recv_bytes] = '\0';
 }
 
-void start_msg_listener(command_args c_args) {
+void start_msg_listener(CommandArgs c_args) {
 	//Create a socket
 	debug_print("Listener: Trying to create a socket");
 	debug_print("Listener: Hostname: NULL Port: " + string(c_args.port));
 	struct addrinfo hints = init_dgram_hints(AI_PASSIVE);
 	struct addrinfo *servinfo =  get_addr_info(NULL, c_args.port, &hints);
 
-	struct socket_info s_info = create_first_possible_socket(servinfo, 1);
+	SocketInfo s_info = create_first_possible_socket(servinfo, 1);
 	int socket_fd = s_info.fd;
 	if (socket_fd == -1) {
 		perror("Listener: Failed to create listen socket");
@@ -75,7 +75,7 @@ void send_message_to_hosts(vector<FileLineContent> file_content, const char *por
 		struct addrinfo hints = init_dgram_hints();
 		struct addrinfo *servinfo = get_addr_info(hostname.c_str(), port, &hints);
 
-		struct socket_info s_info = create_first_possible_socket(servinfo, 1);
+		SocketInfo s_info = create_first_possible_socket(servinfo, 1);
 		int socket_fd = s_info.fd;
 		if (socket_fd == -1) {
 			perror("Talker: Failed to create socket");
@@ -97,7 +97,7 @@ void send_message_to_hosts(vector<FileLineContent> file_content, const char *por
 }
 
 int main(int argc, char* argv[]){
-	struct command_args c_args = parse_cmg_args(argc, argv);
+	CommandArgs c_args = parse_cmg_args(argc, argv);
 
 	//Read hostfile for a list of hosts and their respective line num
 	vector<FileLineContent> file_content = get_file_content(c_args.filename);

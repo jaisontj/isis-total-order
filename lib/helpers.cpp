@@ -19,7 +19,7 @@ void show_usage_and_exit() {
 	exit(0);
 }
 
-struct command_args parse_cmg_args(int argc, char* argv[]) {
+CommandArgs parse_cmg_args(int argc, char* argv[]) {
 	int opt, msg_count, temp_port;
 	const char *port = NULL;
 	string filepath;
@@ -47,7 +47,7 @@ struct command_args parse_cmg_args(int argc, char* argv[]) {
 
 	if(port == NULL || msg_count == -1 || filepath == "")
 		show_usage_and_exit();
-	return (struct command_args) { msg_count, port, filepath };
+	return (CommandArgs) { msg_count, port, filepath };
 }
 
 vector<FileLineContent> get_file_content(string filepath) {
