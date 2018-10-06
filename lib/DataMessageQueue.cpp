@@ -60,13 +60,10 @@ class DataMessageQueue {
 	}
 
 	void mark_as_deliverable(SeqMessage message) {
-		cout<<"Marking message as deliverable"<<endl;
 		string message_id = get_undeliverable_message_id(message.sender, message.msg_id);
-		cout<<"Got Message ID: "<<message_id<<endl;
 		if (undeliverables.find(message_id) == undeliverables.end())
 			throw string("Cannot find message in undeliverables");
 
-		cout<<"Undeliverables contains message with ID: "<<message_id<<endl;
 		uint32_t final_seq = message.final_seq;
 		//Unused because data is not needed.
 		//DataMessage m = undeliverables[message_id];
@@ -77,16 +74,12 @@ class DataMessageQueue {
 				final_seq,
 				message.final_seq_proposer
 				);
-		cout<<"Constructed DeliverableMessage"<<endl;
 
 		if (deliverables.find(final_seq) != deliverables.end()) {
-			cout<<"Deliverables contains final seq: "<<final_seq<<". CRASHING PROGRAM!!!!!!"<<endl;
 			throw string("Deliverable already contains another message with same sequence");
 		}
 
-		cout<<"Deliverables does not contain proposed sequence: "<<final_seq<<endl;
 		deliverables[final_seq] = dm;
-		cout<<"Added deliverable to map"<<endl;
 		print_ordered_deliverables();
 	}
 };

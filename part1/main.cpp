@@ -39,7 +39,7 @@ void send_message_to_hosts(
 }
 
 void handle_data_message(DataMessage *message) {
-	cout<<"Received Data Message: Data is "<<message->data<<endl;
+	debug_print("Received Data Message: Data is " + to_string(message->data));
 	//Add it to unordered queue
 	message_queue.add_undeliverable(*message);
 	//send ack with last_seq+1
@@ -65,11 +65,9 @@ void handle_data_message(DataMessage *message) {
 }
 
 void handle_ack_message(AckMessage *message) {
-	cout<<"Received Ack Message:"
-		<<" Proposer->"<<message->proposer
-		<<" MessageID->"<<message->msg_id
-		<<" ProposedSequence->"<<message->proposed_seq
-		<<endl;
+	debug_print("Received AckMessage: Proposer->" + to_string(message->proposer)
+			+ " MessageID->" + to_string(message->msg_id)
+			+ " ProposedSequence->" + to_string(message->proposed_seq));
 	//Add proposed seq for message
 	uint32_t message_id = message->msg_id;
 	if (msg_proposal_map.find(message_id) == msg_proposal_map.end()) {
@@ -93,12 +91,10 @@ void handle_ack_message(AckMessage *message) {
 }
 
 void handle_seq_message(SeqMessage *seq_msg) {
-	cout<<"Received SeqMessage: "
-		<<" MessageID->"<<seq_msg->msg_id
-		<<" MessageSenderID->"<<seq_msg->sender
-		<<" FinalSequence->"<<seq_msg->final_seq
-		<<" SeqProposerID->"<<seq_msg->final_seq_proposer
-		<<endl;
+	debug_print("Received SeqMessage:  MessageID->" + to_string(seq_msg->msg_id)
+			+ " MessageSenderID->" + to_string(seq_msg->sender)
+			+ " FinalSequence->" + to_string(seq_msg->final_seq)
+			+ " SeqProposerID->" + to_string(seq_msg->final_seq_proposer));
 	//attach the final sequence to the respective received_message
 	debug_print("Marking message as deliverable");
 	seq_provider.set_sequence(seq_msg->final_seq);
