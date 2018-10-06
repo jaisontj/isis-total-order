@@ -86,5 +86,5 @@ int get_id_from_file_content(vector<FileLineContent> file_content) {
 			return line.num;
 		}
 	}
-	return -1;
+	return 0;
 }
