@@ -95,12 +95,12 @@ void handle_seq_message(SeqMessage *seq_msg) {
 			+ " MessageSenderID->" + to_string(seq_msg->sender)
 			+ " FinalSequence->" + to_string(seq_msg->final_seq)
 			+ " SeqProposerID->" + to_string(seq_msg->final_seq_proposer));
+
 	//attach the final sequence to the respective received_message
-	debug_print("Marking message as deliverable");
-	seq_provider.set_sequence(seq_msg->final_seq);
 	message_queue.mark_as_deliverable(*seq_msg);
-	debug_print("DONE Marking message as deliverable");
+
 	//update last_sequence to this one, if greater
+	seq_provider.set_sequence(seq_msg->final_seq);
 	//TODO: send ack for this seq messsage
 }
 
@@ -170,6 +170,25 @@ void send_data_messages(uint32_t count) {
 		//TODO: is this fine?
 		//Send messages in 1 second intervals
 		sleep(1);
+
+		//TIMEOUT = 5secs
+		//sent message, expecting file_content.size() number of acks for it within TIMEOUT time.
+		//if dont received within TIMEOUT, resend same message to hosts whose acks are missing.
+		////wait for acks and reset timeou
+		//
+		//Decide on some value of TIMEOUT
+		//
+		//max time to send message = 1secs
+		//meaning acks can be gotten back in 2 seconds tops
+		//Timeout for acks => 4secs
+		//
+		//Logic for datamessage retry
+		//Step 1: send messages to all hosts
+		//Step 2: start counter until TIMEOUT, and check if all acks have been received.
+		//Step 3: if all acks not received,
+		////Step 3.1 - Get lets of hosts whose acks are missing
+		////Step 3.2 - resend message to hosts whose acks are missing
+		////Step 3.3 - start counter until TIMEOUT and check if all acks have been received.
 	}
 }
 

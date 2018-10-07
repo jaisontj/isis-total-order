@@ -4,17 +4,33 @@
 #include <unistd.h>
 #include <vector>
 #include <limits.h>
+#include <cstdlib>
+#include <ctime>
 
 #include "custom_types.h"
 using namespace std;
 
 bool DEBUG = false;
-bool DELAY_MESSAGE = false;
 bool DROP_MESSAGE = false;
+int delay_amount = 0;
 
 void debug_print(string message) {
 	if (DEBUG) cout<<message<<endl;
 }
+
+int get_message_delay() {
+	return delay_amount;
+}
+
+bool should_drop_message() {
+	if (DROP_MESSAGE) {
+		//decide randomly
+		srand(time(0));
+		return rand() % 2 == 0;
+	}
+	return false;
+}
+
 
 void show_usage_and_exit() {
 	cout<<"Usage: -p port -h hostfile -c count"<<endl;
@@ -25,7 +41,7 @@ CommandArgs parse_cmg_args(int argc, char* argv[]) {
 	int opt, msg_count, temp_port;
 	const char *port = NULL;
 	string filepath;
-	while((opt = getopt(argc, argv, "p:h:c:vdl")) != -1) {
+	while((opt = getopt(argc, argv, "p:h:c:vd:l")) != -1) {
 		switch(opt) {
 			case 'p':
 				temp_port = atoi(optarg);
@@ -45,10 +61,11 @@ CommandArgs parse_cmg_args(int argc, char* argv[]) {
 				DEBUG = true;
 				break;
 			case 'd':
-				DELAY_MESSAGE = true;
+				delay_amount = atoi(optarg);
 				break;
 			case 'l':
 				DROP_MESSAGE = true;
+				break;
 			default:
 				show_usage_and_exit();
 				break;

@@ -15,6 +15,8 @@ all: clean build run
 
 alldebug: clean build rundebug
 
+cleanandbuild: clean build
+
 build: $(TARGET)
 
 $(TARGET): $(TARGET).cpp
@@ -24,8 +26,16 @@ run:
 	./$(TARGET) -p $(PORT) -h $(HOSTFILE) -c $(COUNT)
 
 rundebug:
-	./$(TARGET) -p $(PORT) -h $(HOSTFILE) -c $(COUNT) -d
+	./$(TARGET) -p $(PORT) -h $(HOSTFILE) -c $(COUNT) -v
 
+runwithdelay:
+	./$(TARGET) -p $(PORT) -h $(HOSTFILE) -c $(COUNT) -v -d 2
+
+runwithloss:
+	./$(TARGET) -p $(PORT) -h $(HOSTFILE) -c $(COUNT) -v -l
+
+runwithlossanddelay:
+	./$(TARGET) -p $(PORT) -h $(HOSTFILE) -c $(COUNT) -v -d 2 -l
 
 clean:
 	rm -r $(TARGET)
