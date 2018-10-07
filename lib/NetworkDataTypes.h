@@ -4,7 +4,7 @@ struct NetworkMessage {
 	uint32_t type;
 	uint32_t sender;
 	uint32_t msg_id;
-	uint32_t msg_id_or_seq;
+	uint32_t data_or_seq;
 	uint32_t proposer_id;
 };
 

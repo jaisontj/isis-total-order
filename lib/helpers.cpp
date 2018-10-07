@@ -6,20 +6,40 @@
 #include <limits.h>
 #include <cstdlib>
 #include <ctime>
+#include <mutex>
 
 #include "custom_types.h"
 using namespace std;
 
 bool DEBUG = false;
+bool VERBOSE = false;
 bool DROP_MESSAGE = false;
 int delay_amount = 0;
 
+void verbose_print(string message) {
+	mutex m;
+	lock_guard<mutex> lk(m);
+	if (VERBOSE) cout<<message<<endl;
+}
+
 void debug_print(string message) {
-	if (DEBUG) cout<<message<<endl;
+	mutex m;
+	lock_guard<mutex> lk(m);
+	if (DEBUG) cout<<time(0)<<"::::::"<<message<<endl;
+}
+
+void debug_print_line() {
+	debug_print("--------------------------------------------------------------------------------");
 }
 
 int get_message_delay() {
 	return delay_amount;
+}
+
+void simulate_delay_if_needed() {
+	int delay = get_message_delay();
+	debug_print("Delay in handling message: " + to_string(delay));
+	sleep(delay);
 }
 
 bool should_drop_message() {
@@ -30,7 +50,6 @@ bool should_drop_message() {
 	}
 	return false;
 }
-
 
 void show_usage_and_exit() {
 	cout<<"Usage: -p port -h hostfile -c count"<<endl;

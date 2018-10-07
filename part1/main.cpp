@@ -16,7 +16,7 @@
 #include "../lib/SeqProvider.cpp"
 #include "../lib/helpers.h"
 #include "../lib/socket_helpers.h"
-#include "../lib/ProposalTracker.cpp"
+#include "../lib/DataMessageSeqTracker.cpp"
 
 using namespace std;
 
@@ -24,8 +24,8 @@ uint32_t ID;
 vector<FileLineContent> file_content;
 CommandArgs c_args;
 SeqProvider seq_provider;
-map<uint32_t, ProposalTracker> msg_proposal_map;
 DataMessageQueue message_queue;
+DataMessageSeqTracker data_message_proposal_tracker;
 
 void send_message_to_hosts(
 		void *message,
@@ -38,8 +38,32 @@ void send_message_to_hosts(
 	}
 }
 
+void print(DataMessage *message) {
+	debug_print("DataMessage:Sender->" + to_string(message->sender)
+			+ " MessageID->" + to_string(message->msg_id)
+			+ " Data->" + to_string(message->data));
+}
+
+void print(AckMessage *message) {
+	debug_print("AckMessage: Proposer->" + to_string(message->proposer)
+			+ " MessageID->" + to_string(message->msg_id)
+			+ " ProposedSequence->" + to_string(message->proposed_seq));
+}
+
+void print(SeqMessage *seq_msg) {
+	debug_print("SeqMessage:  MessageID->" + to_string(seq_msg->msg_id)
+			+ " MessageSenderID->" + to_string(seq_msg->sender)
+			+ " FinalSequence->" + to_string(seq_msg->final_seq)
+			+ " SeqProposerID->" + to_string(seq_msg->final_seq_proposer));
+}
+
+
 void handle_data_message(DataMessage *message) {
-	debug_print("Received Data Message: Data is " + to_string(message->data));
+	string hostname = get_hostname_from_id(file_content, message->sender);
+	if (hostname == "") {
+		cout<<"Received DataMessage from unknown sender. Ignoring"<<endl;
+		return;
+	}
 	//Add it to unordered queue
 	message_queue.add_undeliverable(*message);
 	//send ack with last_seq+1
@@ -47,14 +71,14 @@ void handle_data_message(DataMessage *message) {
 		.type = 2,
 		.sender = message->sender,
 		.msg_id = message->msg_id,
-		.proposed_seq = seq_provider.get_sequence() + 1,
+		.proposed_seq = seq_provider.increment_sequence(),
 		.proposer = ID
 	};
-	string hostname = get_hostname_from_id(file_content, message->sender);
-	if (hostname == "") {
-		cout<<"Received DataMessage from unknown sender. Ignoring"<<endl;
-		return;
-	}
+	debug_print("Received DataMessage-------------------");
+	print(message);
+	debug_print("Sending ACK----------------------------");
+	print((AckMessage *) &ack);
+
 	int sent_bytes = send_message_to_host(hostname.c_str(), c_args.port, (void *) &ack, sizeof ack);
 	if (sent_bytes == -1) {
 		//TODO: HANDLE
@@ -62,49 +86,62 @@ void handle_data_message(DataMessage *message) {
 	}
 	//TODO: wait for final_seq
 	//TODO: What happens if no ack is received?
+	delete message;
 }
 
 void handle_ack_message(AckMessage *message) {
-	debug_print("Received AckMessage: Proposer->" + to_string(message->proposer)
-			+ " MessageID->" + to_string(message->msg_id)
-			+ " ProposedSequence->" + to_string(message->proposed_seq));
 	//Add proposed seq for message
 	uint32_t message_id = message->msg_id;
-	if (msg_proposal_map.find(message_id) == msg_proposal_map.end()) {
-		msg_proposal_map[message_id] = ProposalTracker(file_content.size());
-	}
-	msg_proposal_map[message_id].handle_seq_proposal(message->proposed_seq, message->proposer);
-	//check if all acks have been received
-	if (msg_proposal_map[message_id].has_received_all_proposals()) {
-		//if yes, get max seq and send Seq message to all
+	data_message_proposal_tracker.handle_sequence_proposal(
+			message_id,
+			message->proposed_seq,
+			message->proposer
+			);
+	debug_print("Recieved AckMessage---------------------");
+	print(message);
+	if (data_message_proposal_tracker.has_received_all_proposals(message_id)) {
+		debug_print("Sending SeqMessage------------------");
+		uint32_t final_seq = data_message_proposal_tracker.get_max_proposed_seq(message_id);
+		uint32_t final_seq_proposer = data_message_proposal_tracker.get_max_seq_proposer_id(message_id);
 		SeqMessage seq_message = {
 			.type = 3,
 			.sender = message->sender,
 			.msg_id = message_id,
-			.final_seq = msg_proposal_map[message_id].get_max_proposed_seq(),
-			.final_seq_proposer = msg_proposal_map[message_id].get_max_seq_proposer_id()
+			.final_seq = final_seq,
+			.final_seq_proposer = final_seq_proposer
 		};
+		print((SeqMessage *) &seq_message);
 		send_message_to_hosts((void *) &seq_message, sizeof seq_message);
 		//TODO: what happens if the above message does not reach?
+	} else {
+		debug_print("Has not received all proposals yet-------------------------------------");
 	}
 	//TODO:if no, chill out. Wait....
+	delete message;
 }
 
 void handle_seq_message(SeqMessage *seq_msg) {
-	debug_print("Received SeqMessage:  MessageID->" + to_string(seq_msg->msg_id)
-			+ " MessageSenderID->" + to_string(seq_msg->sender)
-			+ " FinalSequence->" + to_string(seq_msg->final_seq)
-			+ " SeqProposerID->" + to_string(seq_msg->final_seq_proposer));
-
 	//attach the final sequence to the respective received_message
-	message_queue.mark_as_deliverable(*seq_msg);
-
-	//update last_sequence to this one, if greater
-	seq_provider.set_sequence(seq_msg->final_seq);
-	//TODO: send ack for this seq messsage
+	try {
+		message_queue.mark_as_deliverable(*seq_msg);
+		//update last_sequence to this one, if greater
+		seq_provider.update_sequence_if_greater(seq_msg->final_seq);
+		//TODO: send ack for this seq messsage
+	} catch(string m) {
+		cout<<"Error with SequenceMessage: "<<m<<endl;
+	}
+	delete seq_msg;
 }
 
 void handle_network_message(NetworkMessage *message) {
+	if (should_drop_message()) {
+		debug_print("DROPPING NetworkMessage: Type->" + to_string(message->type)
+				+ " SenderID->" + to_string(message->sender)
+				+ " MessageID->" + to_string(message->msg_id)
+				+ " DataOrProposedSequence->" + to_string(message->data_or_seq));
+		return;
+	}
+	simulate_delay_if_needed();
 	switch(message->type) {
 		case 1:
 			handle_data_message((DataMessage *) message);
@@ -129,9 +166,10 @@ void listen_on_socket(int socket_fd) {
 		perror("Listener: Error in receiving message");
 		exit(1);
 	}
-	debug_print("Listener: packet is " + to_string(recv_bytes) + " long");
-	handle_network_message(message);
-	delete message;
+	verbose_print("Listener: packet is " + to_string(recv_bytes) + " long");
+	//Handle message in a different thread, to simulate delay
+	thread message_handle_thread(handle_network_message, message);
+	message_handle_thread.detach();
 }
 
 void start_msg_listener(CommandArgs c_args) {
@@ -144,7 +182,7 @@ void start_msg_listener(CommandArgs c_args) {
 
 	//bind socket to address
 	struct addrinfo *p = s_info.addr;
-	debug_print("Listener: Trying to bind socket to address");
+	verbose_print("Listener: Trying to bind socket to address");
 	if (::bind(socket_fd, p->ai_addr, p->ai_addrlen) == -1) {
 		close(socket_fd);
 		perror("Listener: Failed to bind socket. Exiting.");
@@ -153,10 +191,11 @@ void start_msg_listener(CommandArgs c_args) {
 
 	freeaddrinfo(servinfo);
 
-	debug_print("Listening for messages....");
+	verbose_print("Listening for messages....");
 	while(true) listen_on_socket(socket_fd);
 	close(socket_fd);
 }
+
 
 void send_data_messages(uint32_t count) {
 	for (uint32_t i = 0; i< count; i++) {
@@ -167,6 +206,8 @@ void send_data_messages(uint32_t count) {
 			.data = 1234
 		};
 		send_message_to_hosts((void *) &message, sizeof message);
+
+
 		//TODO: is this fine?
 		//Send messages in 1 second intervals
 		sleep(1);
@@ -207,6 +248,7 @@ int main(int argc, char* argv[]){
 	}
 
 	message_queue.set_process_id(ID);
+	data_message_proposal_tracker.set_max_proposal_count(file_content.size());
 
 	thread listener(start_msg_listener, c_args);
 	//TODO: replace this with a way to ensure that all processes are up

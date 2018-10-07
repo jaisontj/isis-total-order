@@ -40,7 +40,7 @@ void *get_in_addr(struct sockaddr *sa) {
 struct addrinfo* get_addr_info(const char *hostname, const char *port, struct addrinfo *hints) {
 	struct addrinfo *servinfo;
 	string h_name = hostname == NULL ? "NULL" : hostname;
-	debug_print("Getting AddressInfo: Hostname->" + string(h_name) + " Port->" + port);
+	verbose_print("Getting AddressInfo: Hostname->" + string(h_name) + " Port->" + port);
 	int rv = getaddrinfo(hostname, port, hints, &servinfo);
 	if (rv != 0) {
 		std::cout<<"getaddrinfo error: "<<gai_strerror(rv)<<std::endl;
@@ -83,7 +83,7 @@ struct SocketInfo create_first_possible_socket(struct addrinfo *servinfo, int sh
 		}
 	}
 
-	debug_print("Socket created with ip: " + get_socket_ip(p));
+	verbose_print("Socket created with ip: " + get_socket_ip(p));
 
 	return (SocketInfo) { socket_fd, p };
 }
@@ -103,14 +103,6 @@ int send_message_to_host(
 		void *message,
 		size_t message_size
 		) {
-	if (should_drop_message()) {
-		debug_print("Dropping message...");
-		return 16;
-	}
-
-	int delay = get_message_delay();
-	debug_print("Delay amount: " + to_string(delay));
-	sleep(delay);
 	string h_name = hostname == NULL ? "NULL" : hostname;
 	trim_string(h_name);
 	if (h_name.empty()) {

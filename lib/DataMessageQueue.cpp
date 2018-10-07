@@ -1,4 +1,5 @@
 #include<map>
+#include<mutex>
 #include<iostream>
 
 #include "NetworkDataTypes.h"
@@ -21,7 +22,7 @@ class DeliverableMessage {
 		this->proposer_id = proposer_id;
 	}
 
-	void process() {
+	void process_message() {
 		cout<<process_id
 			<<": Processed message "<<msg_id
 			<<" from sender "<<sender_id
@@ -31,6 +32,7 @@ class DeliverableMessage {
 };
 
 class DataMessageQueue {
+	mutex m;
 	uint32_t process_id;
 	uint32_t last_delivered_seq;
 	map<string, DataMessage> undeliverables;
@@ -43,7 +45,7 @@ class DataMessageQueue {
 	void print_ordered_deliverables() {
 		//Print starting from last_seq until ordered seq
 		while(deliverables.find(last_delivered_seq + 1) != deliverables.end()) {
-			deliverables[last_delivered_seq + 1].process();
+			deliverables[last_delivered_seq + 1].process_message();
 			++last_delivered_seq;
 		}
 	}
@@ -55,17 +57,19 @@ class DataMessageQueue {
 	}
 
 	void add_undeliverable(DataMessage message) {
+		lock_guard<mutex> lk(m);
 		string message_id = get_undeliverable_message_id(message.sender, message.msg_id);
 		undeliverables[message_id] = message;
 	}
 
 	void mark_as_deliverable(SeqMessage message) {
+		lock_guard<mutex> lk(m);
 		string message_id = get_undeliverable_message_id(message.sender, message.msg_id);
 		if (undeliverables.find(message_id) == undeliverables.end())
 			throw string("Cannot find message in undeliverables");
 
 		uint32_t final_seq = message.final_seq;
-		//Unused because data is not needed.
+		//Unused because m.data is not needed.
 		//DataMessage m = undeliverables[message_id];
 		DeliverableMessage dm = DeliverableMessage(
 				process_id,
