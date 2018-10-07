@@ -9,6 +9,8 @@
 using namespace std;
 
 bool DEBUG = false;
+bool DELAY_MESSAGE = false;
+bool DROP_MESSAGE = false;
 
 void debug_print(string message) {
 	if (DEBUG) cout<<message<<endl;
@@ -23,7 +25,7 @@ CommandArgs parse_cmg_args(int argc, char* argv[]) {
 	int opt, msg_count, temp_port;
 	const char *port = NULL;
 	string filepath;
-	while((opt = getopt(argc, argv, "p:h:c:d")) != -1) {
+	while((opt = getopt(argc, argv, "p:h:c:vdl")) != -1) {
 		switch(opt) {
 			case 'p':
 				temp_port = atoi(optarg);
@@ -39,9 +41,14 @@ CommandArgs parse_cmg_args(int argc, char* argv[]) {
 			case 'c':
 				msg_count = atoi(optarg);
 				break;
-			case 'd':
+			case 'v':
 				DEBUG = true;
 				break;
+			case 'd':
+				DELAY_MESSAGE = true;
+				break;
+			case 'l':
+				DROP_MESSAGE = true;
 			default:
 				show_usage_and_exit();
 				break;
