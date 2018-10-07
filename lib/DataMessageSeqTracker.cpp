@@ -1,13 +1,14 @@
 #include <iostream>
 #include <map>
 #include <mutex>
+#include <vector>
 
 using namespace std;
 
 class ProposalTracker {
 	uint32_t max_proposed_seq;
 	uint32_t max_seq_proposer_id;
-	uint32_t proposal_count;
+	vector<uint32_t> proposers;
 	uint32_t max_proposals;
 
 	public:
@@ -15,7 +16,6 @@ class ProposalTracker {
 	ProposalTracker (uint32_t max_possible_proposals) {
 		max_proposals = max_possible_proposals;
 		max_proposed_seq = 0;
-		proposal_count = 0;
 		max_seq_proposer_id = 0;
 	}
 
@@ -24,20 +24,19 @@ class ProposalTracker {
 			max_proposed_seq = sequence;
 			max_seq_proposer_id = proposer_id;
 		}
-		proposal_count++;
+		//Only add to vector if its a new proposer.
+		if (find(proposers.begin(), proposers.end(), proposer_id) == proposers.end()) {
+			proposers.push_back(proposer_id);
+		}
 	}
 
-	bool has_received_all_proposals() {
-		return proposal_count == max_proposals;
-	}
+	vector<uint32_t> get_proposers() { return proposers; }
 
-	uint32_t get_max_proposed_seq() {
-		return max_proposed_seq;
-	}
+	bool has_received_all_proposals() { return proposers.size() == max_proposals; }
 
-	uint32_t get_max_seq_proposer_id() {
-		return max_seq_proposer_id;
-	}
+	uint32_t get_max_proposed_seq() { return max_proposed_seq; }
+
+	uint32_t get_max_seq_proposer_id() { return max_seq_proposer_id; }
 };
 
 
@@ -79,4 +78,11 @@ class DataMessageSeqTracker {
 		if (msg_proposal_map.find(message_id) == msg_proposal_map.end()) return 0;
 		return msg_proposal_map[message_id].get_max_seq_proposer_id();
 	}
+
+	vector<uint32_t> get_proposers(uint32_t message_id) {
+		lock_guard<mutex> lk(m);
+		if (msg_proposal_map.find(message_id) == msg_proposal_map.end()) return {};
+		return msg_proposal_map[message_id].get_proposers();
+	}
+
 };

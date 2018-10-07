@@ -18,6 +18,10 @@
 #include "../lib/socket_helpers.h"
 #include "../lib/DataMessageSeqTracker.cpp"
 
+//expected network delay of 1 sec
+#define NETWORK_DELAY 1
+#define MAX_RETRY_COUNT 2
+
 using namespace std;
 
 uint32_t ID;
@@ -36,6 +40,16 @@ void send_message_to_hosts(
 		string hostname = line.content;
 		send_message_to_host(hostname.c_str(), port, message, message_size);
 	}
+}
+
+void send_message_to_hosts(
+		void *message,
+		size_t message_size,
+		vector<string> hostnames
+		) {
+	const char *port = c_args.port;
+	for (auto const &hostname: hostnames)
+		send_message_to_host(hostname.c_str(), port, message, message_size);
 }
 
 void print(DataMessage *message) {
@@ -134,14 +148,6 @@ void handle_seq_message(SeqMessage *seq_msg) {
 }
 
 void handle_network_message(NetworkMessage *message) {
-	if (should_drop_message()) {
-		debug_print("DROPPING NetworkMessage: Type->" + to_string(message->type)
-				+ " SenderID->" + to_string(message->sender)
-				+ " MessageID->" + to_string(message->msg_id)
-				+ " DataOrProposedSequence->" + to_string(message->data_or_seq));
-		return;
-	}
-	simulate_delay_if_needed();
 	switch(message->type) {
 		case 1:
 			handle_data_message((DataMessage *) message);
@@ -157,20 +163,17 @@ void handle_network_message(NetworkMessage *message) {
 	}
 }
 
-void listen_on_socket(int socket_fd) {
-	struct sockaddr_storage recv_addr;
-	socklen_t recv_addr_len = sizeof(recv_addr);
-	NetworkMessage *message = new NetworkMessage();
-	int recv_bytes = recvfrom(socket_fd, message, sizeof (NetworkMessage), 0, (struct sockaddr *)&recv_addr, &recv_addr_len);
-	if (recv_bytes == -1) {
-		perror("Listener: Error in receiving message");
-		exit(1);
+void pretend_proxy(NetworkMessage *message) {
+	if (should_drop_message()) {
+		debug_print("DROPPING NetworkMessage: Type->" + to_string(message->type)
+				+ " SenderID->" + to_string(message->sender)
+				+ " MessageID->" + to_string(message->msg_id)
+				+ " DataOrProposedSequence->" + to_string(message->data_or_seq));
+		return;
 	}
-	verbose_print("Listener: packet is " + to_string(recv_bytes) + " long");
-	//Handle message in a different thread, to simulate delay
-	thread message_handle_thread(handle_network_message, message);
-	message_handle_thread.detach();
+	simulate_delay_if_needed();
 }
+
 
 void start_msg_listener(CommandArgs c_args) {
 	//Create a socket
@@ -192,10 +195,40 @@ void start_msg_listener(CommandArgs c_args) {
 	freeaddrinfo(servinfo);
 
 	verbose_print("Listening for messages....");
-	while(true) listen_on_socket(socket_fd);
+	while (true) {
+		struct sockaddr_storage recv_addr;
+		socklen_t recv_addr_len = sizeof(recv_addr);
+		NetworkMessage *message = new NetworkMessage();
+		int recv_bytes = recvfrom(socket_fd, message, sizeof (NetworkMessage), 0, (struct sockaddr *)&recv_addr, &recv_addr_len);
+		if (recv_bytes == -1) {
+			perror("Listener: Error in receiving message");
+			exit(1);
+		}
+		verbose_print("Listener: packet is " + to_string(recv_bytes) + " long");
+		//Handle message in a different thread, to simulate delay
+		thread message_handle_thread(handle_network_message, message);
+		message_handle_thread.detach();
+	}
 	close(socket_fd);
 }
 
+void await_acks_for_data_message(DataMessage message, uint32_t number_of_acks, int retry_count = 0) {
+	//sleep for 2*NETWORK_DELAY because to and fro, just to be safe, wait 2x that
+	sleep(2*2*NETWORK_DELAY);
+	//Should have received all acks by now.
+	vector<uint32_t> proposers = data_message_proposal_tracker.get_proposers(message.msg_id);
+	if (proposers.size() < number_of_acks) {
+		if (retry_count == MAX_RETRY_COUNT) {
+			cout<<"Not receiving ack for message. Maybe a process has crashed. Exiting."<<endl;
+			exit(1);
+		}
+		//Get list of hostnames who have not ack'd and resend DataMessage
+		vector<string> missed_proposers = get_hostnames_not_in_list(file_content, proposers);
+		debug_print("Resending DataMessage to missing hosts");
+		send_message_to_hosts((void *) &message, sizeof message, missed_proposers);
+		await_acks_for_data_message(message, number_of_acks, retry_count + 1);
+	}
+}
 
 void send_data_messages(uint32_t count) {
 	for (uint32_t i = 0; i< count; i++) {
@@ -207,6 +240,9 @@ void send_data_messages(uint32_t count) {
 		};
 		send_message_to_hosts((void *) &message, sizeof message);
 
+		//expect file_content.size() number of acks within ACK_TIMEOUT
+		thread await_acks_thread(await_acks_for_data_message, message, file_content.size());
+		await_acks_thread.detach();
 
 		//TODO: is this fine?
 		//Send messages in 1 second intervals

@@ -143,3 +143,18 @@ string get_hostname_from_id(vector<FileLineContent> file_content, uint32_t id) {
 	return "";
 }
 
+vector<string> get_hostnames_not_in_list(vector<FileLineContent> file_content, vector<uint32_t> host_ids) {
+	vector<string> absent_list;
+	for (auto const &line: file_content) {
+		bool isPresent = false;
+		for (auto const &host_id: host_ids) {
+			if (line.num == host_id) {
+				isPresent = true;
+				break;
+			}
+		}
+		if (!isPresent)  absent_list.push_back(line.content);
+	}
+	return absent_list;
+}
+
