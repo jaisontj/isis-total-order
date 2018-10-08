@@ -2,11 +2,6 @@
 
 using namespace std;
 
-struct FileLineContent {
-	string content;
-	uint32_t num;
-};
-
 struct CommandArgs {
 	int msg_count;
 	string port;

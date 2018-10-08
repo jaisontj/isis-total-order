@@ -4,7 +4,7 @@
 #include "DgramSocket.h"
 #include "NetworkDataTypes.h"
 
-typedef void (*SocketMessageHandler)(NetworkMessage *message);
+typedef void (*SocketMessageHandler)(NetworkMessage message);
 
 class ListenerSocket: public DgramSocket {
 	public:

@@ -16,21 +16,12 @@
 #include "../lib/SeqProvider.h"
 #include "../lib/helpers.h"
 #include "../lib/DataMessageSeqTracker.h"
-
 #include "../lib/ListenerSocket.h"
 #include "../lib/MessageDispatcher.h"
 #include "../lib/Log.h"
 #include "../lib/LogHelper.h"
+#include "../lib/ProcessInfoHelper.h"
 
-
-/**
- * TODO:
- *   - Delay and Drop messages. HANDLE with retry and if two retries fail. Exit by declaring one process as crashed.
- *   - Better command line args, use getlongport. Differentiate between debug, verbose and error. Support for drop and delay as well.
- *	 - Perform handshake to check if all processes are up, before sending messages.
- *   - Ack for sequence message.
- *   - Look into duplicate seq numbers.
- */
 
 //expected network delay of 1 sec
 #define NETWORK_DELAY 1
@@ -39,25 +30,21 @@
 using namespace std;
 
 LogLevel Log::LOG_LEVEL = NONE;
+vector<ProcessInfo> ProcessInfoHelper::PROCESS_LIST;
+ProcessInfo ProcessInfoHelper::SELF;
 
-uint32_t ID;
-vector<FileLineContent> file_content;
 CommandArgs c_args;
-SeqProvider seq_provider;
 DataMessageQueue message_queue;
 DataMessageSeqTracker data_message_proposal_tracker;
 MessageDispatcher message_dispatcher;
+SeqProvider seq_provider;
 
-void send_message_to_hosts(NetworkMessage *message, size_t message_size) {
+void send_message_to_processes(NetworkMessage *message, size_t message_size, vector<ProcessInfo> processes) {
 	string port = c_args.port;
-	for (auto const& line: file_content) {
-		string hostname = line.content;
+	for (auto const& process: processes) {
+		string hostname = process.hostname;
 		message_dispatcher.add_message_to_queue(message, message_size, hostname.c_str(), port);
 	}
-}
-
-void send_message_to_hosts(NetworkMessage *message, size_t message_size, vector<string> hostnames) {
-	message_dispatcher.add_message_to_queue(message, message_size, hostnames, c_args.port);
 }
 
 void send_message_to_host(NetworkMessage *message, size_t message_size, string hostname) {
@@ -65,11 +52,15 @@ void send_message_to_host(NetworkMessage *message, size_t message_size, string h
 }
 
 void handle_data_message(DataMessage *message) {
-	string hostname = get_hostname_from_id(file_content, message->sender);
+	ProcessInfo p = ProcessInfoHelper::get_process_info(message->sender);
+	string hostname = p.hostname;
 	if (hostname == "") {
-		cout<<"Received DataMessage from unknown sender. Ignoring"<<endl;
+		Log::e("Received DataMessage from unknown sender. Ignoring");
 		return;
 	}
+
+	uint32_t ID = ProcessInfoHelper::SELF.id;
+
 	//send ack with last_seq+1
 	AckMessage ack = {
 		.type = 2,
@@ -88,7 +79,6 @@ void handle_data_message(DataMessage *message) {
 	send_message_to_host((NetworkMessage *) &ack, sizeof ack, hostname.c_str());
 	//TODO: wait for final_seq
 	//TODO: What happens if no ack is received?
-	delete message;
 }
 
 void handle_ack_message(AckMessage *message) {
@@ -113,13 +103,12 @@ void handle_ack_message(AckMessage *message) {
 			.final_seq_proposer = final_seq_proposer
 		};
 		log((SeqMessage *) &seq_message);
-		send_message_to_hosts((NetworkMessage *) &seq_message, sizeof seq_message);
+		send_message_to_processes((NetworkMessage *) &seq_message, sizeof seq_message, ProcessInfoHelper::PROCESS_LIST);
 		//TODO: what happens if the above message does not reach?
 	} else {
 		Log::d("Has not received all proposals yet-------------------------------------");
 	}
 	//TODO:if no, chill out. Wait....
-	delete message;
 }
 
 void handle_seq_message(SeqMessage *seq_msg) {
@@ -132,64 +121,33 @@ void handle_seq_message(SeqMessage *seq_msg) {
 	} catch(string m) {
 		cout<<"Error with SequenceMessage: "<<m<<endl;
 	}
-	delete seq_msg;
 }
 
-void handle_network_message(NetworkMessage *message) {
-	switch(message->type) {
+void handle_message(NetworkMessage message) {
+	switch(message.type) {
 		case 1:
-			handle_data_message((DataMessage *) message);
+			handle_data_message((DataMessage *) &message);
 			return;
 		case 2:
-			handle_ack_message((AckMessage *) message);
+			handle_ack_message((AckMessage *) &message);
 			return;
 		case 3:
-			handle_seq_message((SeqMessage *) message);
+			handle_seq_message((SeqMessage *) &message);
 			return;
 		default:
-			cout<<"Received unknown message type from network. Ignoring"<<endl;
+			Log::e("Received unknown message type from network. Ignoring");
 	}
 }
-
-void pretend_proxy(NetworkMessage *message) {
-	if (should_drop_message()) {
-		Log::d("DROPPING NetworkMessage: Type->" + to_string(message->type)
-				+ " SenderID->" + to_string(message->sender)
-				+ " MessageID->" + to_string(message->msg_id)
-				+ " DataOrProposedSequence->" + to_string(message->data_or_seq));
-		return;
-	}
-	simulate_delay_if_needed();
-}
-
 
 void start_msg_listener(CommandArgs c_args) {
 	Log::d("Starting message listener");
 	try {
 		ListenerSocket listener = ListenerSocket(c_args.port);
-		listener.start_listening(&handle_network_message);
+		listener.start_listening(&handle_message);
 		listener.close_socket();
 	} catch (string m) {
 		Log::e(m);
 		start_msg_listener(c_args);
-	}
-}
-
-void await_acks_for_data_message(DataMessage message, uint32_t number_of_acks, int retry_count = 0) {
-	//sleep for 2*NETWORK_DELAY because to and fro, just to be safe, wait 2x that
-	sleep(2*2*NETWORK_DELAY);
-	//Should have received all acks by now.
-	vector<uint32_t> proposers = data_message_proposal_tracker.get_proposers(message.msg_id);
-	if (proposers.size() < number_of_acks) {
-		if (retry_count == MAX_RETRY_COUNT) {
-			cout<<"Not receiving ack for message. Maybe a process has crashed. Exiting."<<endl;
-			exit(1);
-		}
-		//Get list of hostnames who have not ack'd and resend DataMessage
-		vector<string> missed_proposers = get_hostnames_not_in_list(file_content, proposers);
-		Log::d("Resending DataMessage to missing hosts");
-		send_message_to_hosts((NetworkMessage *) &message, sizeof message, missed_proposers);
-		await_acks_for_data_message(message, number_of_acks, retry_count + 1);
 	}
 }
 
@@ -198,39 +156,16 @@ void send_data_messages(uint32_t count) {
 	for (uint32_t i = 0; i< count; i++) {
 		DataMessage message = {
 			.type = 1,
-			.sender = ID,
+			.sender = ProcessInfoHelper::SELF.id,
 			.msg_id = i+1,
 			.data = 1234
 		};
 
-		send_message_to_hosts((NetworkMessage *) &message, sizeof message);
-
-		//expect file_content.size() number of acks within ACK_TIMEOUT
-		//thread await_acks_thread(await_acks_for_data_message, message, file_content.size());
-		//await_acks_thread.detach();
+		send_message_to_processes((NetworkMessage *) &message, sizeof message, ProcessInfoHelper::PROCESS_LIST);
 
 		//TODO: is this fine?
 		//Send messages in 1 second intervals
 		sleep(1);
-
-		//TIMEOUT = 5secs
-		//sent message, expecting file_content.size() number of acks for it within TIMEOUT time.
-		//if dont received within TIMEOUT, resend same message to hosts whose acks are missing.
-		////wait for acks and reset timeou
-		//
-		//Decide on some value of TIMEOUT
-		//
-		//max time to send message = 1secs
-		//meaning acks can be gotten back in 2 seconds tops
-		//Timeout for acks => 4secs
-		//
-		//Logic for datamessage retry
-		//Step 1: send messages to all hosts
-		//Step 2: start counter until TIMEOUT, and check if all acks have been received.
-		//Step 3: if all acks not received,
-		////Step 3.1 - Get lets of hosts whose acks are missing
-		////Step 3.2 - resend message to hosts whose acks are missing
-		////Step 3.3 - start counter until TIMEOUT and check if all acks have been received.
 	}
 }
 
@@ -239,16 +174,9 @@ int main(int argc, char* argv[]){
 	c_args = parse_cmg_args(argc, argv);
 
 	//Read hostfile for a list of hosts and their respective line num
-	file_content = get_file_content(c_args.filename);
+	ProcessInfoHelper::init_from_file(c_args.filename);
 
-	//Get process ID for self
-	ID = get_id_from_file_content(file_content);
-	if (ID == 0) {
-		cout<<"Unable to find hostname in provided file at "<<c_args.filename<<". Please ensure that the hostname is provided in file."<<endl;
-		return 1;
-	}
-
-	data_message_proposal_tracker.set_max_proposal_count(file_content.size());
+	data_message_proposal_tracker.set_max_proposal_count(ProcessInfoHelper::PROCESS_LIST.size());
 
 	thread listener(start_msg_listener, c_args);
 	//TODO: replace this with a way to ensure that all processes are up

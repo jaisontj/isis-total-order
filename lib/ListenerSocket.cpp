@@ -30,6 +30,7 @@ void ListenerSocket::start_listening(SocketMessageHandler handler) {
 		Log::v("Listener: packet is " + std::to_string(recv_bytes) + " bytes long");
 		Log::d("Received NetworkMessage-----------------");
 		log(message);
-		handler(message);
+		handler(*message);
+		delete message;
 	}
 }
