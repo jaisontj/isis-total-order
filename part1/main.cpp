@@ -15,8 +15,12 @@
 #include "../lib/DataMessageQueue.cpp"
 #include "../lib/SeqProvider.cpp"
 #include "../lib/helpers.h"
-#include "../lib/socket_helpers.h"
 #include "../lib/DataMessageSeqTracker.cpp"
+
+#include "../lib/ListenerSocket.h"
+#include "../lib/MessageDispatcher.h"
+#include "../lib/Log.h"
+#include "../lib/LogHelper.h"
 
 //expected network delay of 1 sec
 #define NETWORK_DELAY 1
@@ -24,53 +28,31 @@
 
 using namespace std;
 
+LogLevel Log::LOG_LEVEL = VERBOSE;
+
 uint32_t ID;
 vector<FileLineContent> file_content;
 CommandArgs c_args;
 SeqProvider seq_provider;
 DataMessageQueue message_queue;
 DataMessageSeqTracker data_message_proposal_tracker;
+MessageDispatcher message_dispatcher;
 
-void send_message_to_hosts(
-		void *message,
-		size_t message_size
-		) {
-	const char *port = c_args.port;
+void send_message_to_hosts(NetworkMessage *message, size_t message_size) {
+	string port = c_args.port;
 	for (auto const& line: file_content) {
 		string hostname = line.content;
-		send_message_to_host(hostname.c_str(), port, message, message_size);
+		message_dispatcher.add_message_to_queue(message, message_size, hostname.c_str(), port);
 	}
 }
 
-void send_message_to_hosts(
-		void *message,
-		size_t message_size,
-		vector<string> hostnames
-		) {
-	const char *port = c_args.port;
-	for (auto const &hostname: hostnames)
-		send_message_to_host(hostname.c_str(), port, message, message_size);
+void send_message_to_hosts(NetworkMessage *message, size_t message_size, vector<string> hostnames) {
+	message_dispatcher.add_message_to_queue(message, message_size, hostnames, c_args.port);
 }
 
-void print(DataMessage *message) {
-	debug_print("DataMessage:Sender->" + to_string(message->sender)
-			+ " MessageID->" + to_string(message->msg_id)
-			+ " Data->" + to_string(message->data));
+void send_message_to_host(NetworkMessage *message, size_t message_size, string hostname) {
+	message_dispatcher.add_message_to_queue(message, message_size, hostname, c_args.port);
 }
-
-void print(AckMessage *message) {
-	debug_print("AckMessage: Proposer->" + to_string(message->proposer)
-			+ " MessageID->" + to_string(message->msg_id)
-			+ " ProposedSequence->" + to_string(message->proposed_seq));
-}
-
-void print(SeqMessage *seq_msg) {
-	debug_print("SeqMessage:  MessageID->" + to_string(seq_msg->msg_id)
-			+ " MessageSenderID->" + to_string(seq_msg->sender)
-			+ " FinalSequence->" + to_string(seq_msg->final_seq)
-			+ " SeqProposerID->" + to_string(seq_msg->final_seq_proposer));
-}
-
 
 void handle_data_message(DataMessage *message) {
 	string hostname = get_hostname_from_id(file_content, message->sender);
@@ -88,16 +70,11 @@ void handle_data_message(DataMessage *message) {
 		.proposed_seq = seq_provider.increment_sequence(),
 		.proposer = ID
 	};
-	debug_print("Received DataMessage-------------------");
-	print(message);
-	debug_print("Sending ACK----------------------------");
-	print((AckMessage *) &ack);
-
-	int sent_bytes = send_message_to_host(hostname.c_str(), c_args.port, (void *) &ack, sizeof ack);
-	if (sent_bytes == -1) {
-		//TODO: HANDLE
-		cout<<"Failed to send ack to sender for DataMessage"<<endl;
-	}
+	Log::d("Received DataMessage-------------------");
+	log(message);
+	Log::d("Sending ACK----------------------------");
+	log((AckMessage *) &ack);
+	send_message_to_host((NetworkMessage *) &ack, sizeof ack, hostname.c_str());
 	//TODO: wait for final_seq
 	//TODO: What happens if no ack is received?
 	delete message;
@@ -111,10 +88,10 @@ void handle_ack_message(AckMessage *message) {
 			message->proposed_seq,
 			message->proposer
 			);
-	debug_print("Recieved AckMessage---------------------");
-	print(message);
+	Log::d("Recieved AckMessage---------------------");
+	log(message);
 	if (data_message_proposal_tracker.has_received_all_proposals(message_id)) {
-		debug_print("Sending SeqMessage------------------");
+		Log::d("Sending SeqMessage------------------");
 		uint32_t final_seq = data_message_proposal_tracker.get_max_proposed_seq(message_id);
 		uint32_t final_seq_proposer = data_message_proposal_tracker.get_max_seq_proposer_id(message_id);
 		SeqMessage seq_message = {
@@ -124,11 +101,11 @@ void handle_ack_message(AckMessage *message) {
 			.final_seq = final_seq,
 			.final_seq_proposer = final_seq_proposer
 		};
-		print((SeqMessage *) &seq_message);
-		send_message_to_hosts((void *) &seq_message, sizeof seq_message);
+		log((SeqMessage *) &seq_message);
+		send_message_to_hosts((NetworkMessage *) &seq_message, sizeof seq_message);
 		//TODO: what happens if the above message does not reach?
 	} else {
-		debug_print("Has not received all proposals yet-------------------------------------");
+		Log::d("Has not received all proposals yet-------------------------------------");
 	}
 	//TODO:if no, chill out. Wait....
 	delete message;
@@ -165,7 +142,7 @@ void handle_network_message(NetworkMessage *message) {
 
 void pretend_proxy(NetworkMessage *message) {
 	if (should_drop_message()) {
-		debug_print("DROPPING NetworkMessage: Type->" + to_string(message->type)
+		Log::d("DROPPING NetworkMessage: Type->" + to_string(message->type)
 				+ " SenderID->" + to_string(message->sender)
 				+ " MessageID->" + to_string(message->msg_id)
 				+ " DataOrProposedSequence->" + to_string(message->data_or_seq));
@@ -176,40 +153,15 @@ void pretend_proxy(NetworkMessage *message) {
 
 
 void start_msg_listener(CommandArgs c_args) {
-	//Create a socket
-	struct addrinfo hints = init_dgram_hints(AI_PASSIVE);
-	struct addrinfo *servinfo =  get_addr_info(NULL, c_args.port, &hints);
-
-	SocketInfo s_info = create_first_possible_socket(servinfo, 1);
-	int socket_fd = s_info.fd;
-
-	//bind socket to address
-	struct addrinfo *p = s_info.addr;
-	verbose_print("Listener: Trying to bind socket to address");
-	if (::bind(socket_fd, p->ai_addr, p->ai_addrlen) == -1) {
-		close(socket_fd);
-		perror("Listener: Failed to bind socket. Exiting.");
-		exit(0);
+	Log::d("Starting message listener");
+	try {
+		ListenerSocket listener = ListenerSocket(c_args.port);
+		listener.start_listening(&handle_network_message);
+		listener.close_socket();
+	} catch (string m) {
+		Log::e(m);
+		start_msg_listener(c_args);
 	}
-
-	freeaddrinfo(servinfo);
-
-	verbose_print("Listening for messages....");
-	while (true) {
-		struct sockaddr_storage recv_addr;
-		socklen_t recv_addr_len = sizeof(recv_addr);
-		NetworkMessage *message = new NetworkMessage();
-		int recv_bytes = recvfrom(socket_fd, message, sizeof (NetworkMessage), 0, (struct sockaddr *)&recv_addr, &recv_addr_len);
-		if (recv_bytes == -1) {
-			perror("Listener: Error in receiving message");
-			exit(1);
-		}
-		verbose_print("Listener: packet is " + to_string(recv_bytes) + " long");
-		//Handle message in a different thread, to simulate delay
-		thread message_handle_thread(handle_network_message, message);
-		message_handle_thread.detach();
-	}
-	close(socket_fd);
 }
 
 void await_acks_for_data_message(DataMessage message, uint32_t number_of_acks, int retry_count = 0) {
@@ -224,13 +176,14 @@ void await_acks_for_data_message(DataMessage message, uint32_t number_of_acks, i
 		}
 		//Get list of hostnames who have not ack'd and resend DataMessage
 		vector<string> missed_proposers = get_hostnames_not_in_list(file_content, proposers);
-		debug_print("Resending DataMessage to missing hosts");
-		send_message_to_hosts((void *) &message, sizeof message, missed_proposers);
+		Log::d("Resending DataMessage to missing hosts");
+		send_message_to_hosts((NetworkMessage *) &message, sizeof message, missed_proposers);
 		await_acks_for_data_message(message, number_of_acks, retry_count + 1);
 	}
 }
 
 void send_data_messages(uint32_t count) {
+	Log::d("Sending data message");
 	for (uint32_t i = 0; i< count; i++) {
 		DataMessage message = {
 			.type = 1,
@@ -238,11 +191,12 @@ void send_data_messages(uint32_t count) {
 			.msg_id = i+1,
 			.data = 1234
 		};
-		send_message_to_hosts((void *) &message, sizeof message);
+
+		send_message_to_hosts((NetworkMessage *) &message, sizeof message);
 
 		//expect file_content.size() number of acks within ACK_TIMEOUT
-		thread await_acks_thread(await_acks_for_data_message, message, file_content.size());
-		await_acks_thread.detach();
+		//thread await_acks_thread(await_acks_for_data_message, message, file_content.size());
+		//await_acks_thread.detach();
 
 		//TODO: is this fine?
 		//Send messages in 1 second intervals

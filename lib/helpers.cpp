@@ -9,27 +9,20 @@
 #include <mutex>
 
 #include "custom_types.h"
+#include "Log.h"
+
 using namespace std;
 
-bool DEBUG = false;
-bool VERBOSE = false;
 bool DROP_MESSAGE = false;
 int delay_amount = 0;
 
-void verbose_print(string message) {
-	mutex m;
-	lock_guard<mutex> lk(m);
-	if (VERBOSE) cout<<message<<endl;
-}
-
-void debug_print(string message) {
-	mutex m;
-	lock_guard<mutex> lk(m);
-	if (DEBUG) cout<<time(0)<<"::::::"<<message<<endl;
-}
-
-void debug_print_line() {
-	debug_print("--------------------------------------------------------------------------------");
+string& trim_string(string &str) {
+	const string &trim_chars = "\t\n\f\v\r ";
+	//trim from the left
+	str.erase(0, str.find_first_not_of(trim_chars));
+	//trim from the right
+	str.erase(str.find_last_not_of(trim_chars) + 1);
+	return str;
 }
 
 int get_message_delay() {
@@ -38,7 +31,7 @@ int get_message_delay() {
 
 void simulate_delay_if_needed() {
 	int delay = get_message_delay();
-	debug_print("Delay in handling message: " + to_string(delay));
+	Log::d("Delay in handling message: " + to_string(delay));
 	sleep(delay);
 }
 
@@ -58,7 +51,7 @@ void show_usage_and_exit() {
 
 CommandArgs parse_cmg_args(int argc, char* argv[]) {
 	int opt, msg_count, temp_port;
-	const char *port = NULL;
+	string port = "";
 	string filepath;
 	while((opt = getopt(argc, argv, "p:h:c:vd:l")) != -1) {
 		switch(opt) {
@@ -77,7 +70,7 @@ CommandArgs parse_cmg_args(int argc, char* argv[]) {
 				msg_count = atoi(optarg);
 				break;
 			case 'v':
-				DEBUG = true;
+				Log::LOG_LEVEL = DEBUG;
 				break;
 			case 'd':
 				delay_amount = atoi(optarg);
@@ -91,7 +84,7 @@ CommandArgs parse_cmg_args(int argc, char* argv[]) {
 		}
 	}
 
-	if(port == NULL || msg_count == -1 || filepath == "")
+	if(port == "" || msg_count == -1 || filepath == "")
 		show_usage_and_exit();
 	return (CommandArgs) { msg_count, port, filepath };
 }

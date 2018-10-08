@@ -1,3 +1,6 @@
+#ifndef NETWORK_DATA_TYPES_H
+#define NETWORK_DATA_TYPES_H
+
 #include <iostream>
 
 struct NetworkMessage {
@@ -30,3 +33,5 @@ struct SeqMessage {
 	uint32_t final_seq; // the final sequence number selected by the sender
 	uint32_t final_seq_proposer; // the process id of the proposer who proposed the final_seq
 };
+
+#endif

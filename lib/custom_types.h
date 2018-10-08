@@ -9,7 +9,7 @@ struct FileLineContent {
 
 struct CommandArgs {
 	int msg_count;
-	const char *port;
+	string port;
 	string filename;
 };
 
