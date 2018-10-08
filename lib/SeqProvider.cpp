@@ -1,5 +1,12 @@
 #include "SeqProvider.h"
 
+SeqProvider::SeqProvider() {}
+
+SeqProvider& SeqProvider::get_instance() {
+	static SeqProvider instance;
+	return instance;
+}
+
 void SeqProvider::set_sequence(uint32_t new_seq) {
 	this->sequence.store(new_seq);
 }

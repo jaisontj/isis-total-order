@@ -36,7 +36,6 @@ CommandArgs c_args;
 DataMessageQueue message_queue;
 DataMessageSeqTracker data_message_proposal_tracker;
 MessageDispatcher message_dispatcher;
-SeqProvider seq_provider;
 
 void send_message_to_processes(NetworkMessage *message, size_t message_size, vector<ProcessInfo> processes) {
 	string port = c_args.port;
@@ -65,7 +64,7 @@ void handle_data_message(DataMessage *message) {
 		.type = 2,
 		.sender = message->sender,
 		.msg_id = message->msg_id,
-		.proposed_seq = seq_provider.increment_sequence(),
+		.proposed_seq = SeqProvider::get_instance().increment_sequence(),
 		.proposer = ID
 	};
 	//Add it to unordered queue
@@ -115,7 +114,7 @@ void handle_seq_message(SeqMessage *seq_msg) {
 	try {
 		message_queue.mark_as_deliverable(*seq_msg);
 		//update last_sequence to this one, if greater
-		seq_provider.update_sequence_if_greater(seq_msg->final_seq);
+		SeqProvider::get_instance().update_sequence_if_greater(seq_msg->final_seq);
 		//TODO: send ack for this seq messsage
 	} catch(string m) {
 		cout<<"Error with SequenceMessage: "<<m<<endl;
