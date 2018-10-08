@@ -1,90 +1,75 @@
 #include<map>
 #include<mutex>
-#include<iostream>
 
+#include "DataMessageQueue.h"
 #include "NetworkDataTypes.h"
+#include "Log.h"
+#include "LogHelper.h"
+
 using namespace std;
 
-class DeliverableMessage {
-	uint32_t process_id;
-	uint32_t msg_id;
-	uint32_t sender_id;
-	uint32_t final_seq;
-	uint32_t proposer_id;
-
-	public:
-	DeliverableMessage() {}
-	DeliverableMessage(uint32_t process_id, uint32_t msg_id, uint32_t sender_id, uint32_t final_seq, uint32_t proposer_id) {
-		this->process_id = process_id;
-		this->msg_id = msg_id;
-		this->sender_id = sender_id;
-		this->final_seq = final_seq;
-		this->proposer_id = proposer_id;
+void DataMessageQueue::log_mqueue() {
+	log_line();
+	Log::d("Printing currenty present messages in queue...");
+	Log::d("Count: " + to_string(mqueue.size()));
+	for (Message message: mqueue) {
+		Log::d(message.get_as_string());
 	}
+	log_line();
+}
 
-	void process_message() {
-		cout<<process_id
-			<<": Processed message "<<msg_id
-			<<" from sender "<<sender_id
-			<<" with seq ("<<final_seq<<", "<<proposer_id<<")"
-			<<endl;
+void DataMessageQueue::sort_mqueue() {
+	sort(mqueue.begin(), mqueue.end(), [] (Message const &lhs, Message const &rhs) {
+			if (lhs.final_seq == rhs.final_seq) {
+			if (lhs.mstatus == rhs.mstatus) {
+			return lhs.proposer_id < rhs.proposer_id;
+			}
+			return lhs.mstatus == UNDELIVERABLE;
+			}
+			return lhs.final_seq < rhs.final_seq;
+			});
+}
+
+void DataMessageQueue::print_ordered_deliverables() {
+	log_mqueue();
+	sort_mqueue();
+	while(mqueue.begin() != mqueue.end()) {
+		Message msg = mqueue.front();
+		if (msg.mstatus != DELIVERABLE) {
+			Log::d("Head of queue is not marked to be delivered");
+			break;
+		}
+		msg.process_message();
+		mqueue.erase(mqueue.begin());
 	}
-};
+}
 
-class DataMessageQueue {
-	mutex m;
-	uint32_t process_id;
-	uint32_t last_delivered_seq;
-	map<string, DataMessage> undeliverables;
-	map<uint32_t, DeliverableMessage> deliverables;
+void DataMessageQueue::add_undeliverable(
+		uint32_t process_id,
+		uint32_t msg_id,
+		uint32_t sender_id,
+		uint32_t final_seq,
+		uint32_t proposer_id
+		) {
+	lock_guard<mutex> lk(m);
+	mqueue.push_back(Message(process_id,msg_id, sender_id, final_seq, proposer_id));
+}
 
-	string get_undeliverable_message_id(uint32_t sender, uint32_t msg_id) {
-		return to_string(sender) + to_string(msg_id);
-	}
-
-	void print_ordered_deliverables() {
-		//Print starting from last_seq until ordered seq
-		while(deliverables.find(last_delivered_seq + 1) != deliverables.end()) {
-			deliverables[last_delivered_seq + 1].process_message();
-			++last_delivered_seq;
+void DataMessageQueue::mark_as_deliverable(SeqMessage message) {
+	lock_guard<mutex> lk(m);
+	Log::d("Going to mark message as deliverable");
+	bool marked = false;
+	for (vector<int>::size_type i = 0; i < mqueue.size(); i++) {
+		if (mqueue[i].sender_id == message.sender && mqueue[i].msg_id == message.msg_id) {
+			mqueue[i].mark_as_deliverable(message.final_seq, message.final_seq_proposer);
+			marked = true;
+			break;
 		}
 	}
-
-	public:
-
-	void set_process_id(uint32_t id) {
-		process_id = id;
+	if (!marked) {
+		Log::e("Could not find message to mark. NOT POSSIBLE. Throwing...");
+		throw string("Could not find the message to mark. NOT POSSIBLE");
 	}
-
-	void add_undeliverable(DataMessage message) {
-		lock_guard<mutex> lk(m);
-		string message_id = get_undeliverable_message_id(message.sender, message.msg_id);
-		undeliverables[message_id] = message;
-	}
-
-	void mark_as_deliverable(SeqMessage message) {
-		lock_guard<mutex> lk(m);
-		string message_id = get_undeliverable_message_id(message.sender, message.msg_id);
-		if (undeliverables.find(message_id) == undeliverables.end())
-			throw string("Cannot find message in undeliverables");
-
-		uint32_t final_seq = message.final_seq;
-		//Unused because m.data is not needed.
-		//DataMessage m = undeliverables[message_id];
-		DeliverableMessage dm = DeliverableMessage(
-				process_id,
-				message.msg_id,
-				message.sender,
-				final_seq,
-				message.final_seq_proposer
-				);
-
-		if (deliverables.find(final_seq) != deliverables.end()) {
-			throw string("Deliverable already contains another message with same sequence");
-		}
-
-		deliverables[final_seq] = dm;
-		print_ordered_deliverables();
-	}
-};
+	print_ordered_deliverables();
+}
 

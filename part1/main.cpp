@@ -12,10 +12,10 @@
 #include<unistd.h>
 #include<thread>
 
-#include "../lib/DataMessageQueue.cpp"
-#include "../lib/SeqProvider.cpp"
+#include "../lib/DataMessageQueue.h"
+#include "../lib/SeqProvider.h"
 #include "../lib/helpers.h"
-#include "../lib/DataMessageSeqTracker.cpp"
+#include "../lib/DataMessageSeqTracker.h"
 
 #include "../lib/ListenerSocket.h"
 #include "../lib/MessageDispatcher.h"
@@ -28,7 +28,7 @@
 
 using namespace std;
 
-LogLevel Log::LOG_LEVEL = VERBOSE;
+LogLevel Log::LOG_LEVEL = NONE;
 
 uint32_t ID;
 vector<FileLineContent> file_content;
@@ -60,8 +60,6 @@ void handle_data_message(DataMessage *message) {
 		cout<<"Received DataMessage from unknown sender. Ignoring"<<endl;
 		return;
 	}
-	//Add it to unordered queue
-	message_queue.add_undeliverable(*message);
 	//send ack with last_seq+1
 	AckMessage ack = {
 		.type = 2,
@@ -70,6 +68,9 @@ void handle_data_message(DataMessage *message) {
 		.proposed_seq = seq_provider.increment_sequence(),
 		.proposer = ID
 	};
+	//Add it to unordered queue
+	message_queue.add_undeliverable(ID, ack.msg_id, ack.sender, ack.proposed_seq, ack.proposer);
+
 	Log::d("Received DataMessage-------------------");
 	log(message);
 	Log::d("Sending ACK----------------------------");
@@ -237,7 +238,6 @@ int main(int argc, char* argv[]){
 		return 1;
 	}
 
-	message_queue.set_process_id(ID);
 	data_message_proposal_tracker.set_max_proposal_count(file_content.size());
 
 	thread listener(start_msg_listener, c_args);

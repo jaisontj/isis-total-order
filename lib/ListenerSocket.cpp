@@ -14,11 +14,11 @@ ListenerSocket::ListenerSocket(std::string port) : DgramSocket(AI_PASSIVE, "", p
 		throw std::string ("Listener: Failed to bind socket");
 	}
 	free_serve_info();
-	Log::v("Listening for messages.....");
 }
 
 void ListenerSocket::start_listening(SocketMessageHandler handler) {
 	while (true) {
+		Log::v("Listening for messages.....");
 		struct sockaddr_storage recv_addr;
 		socklen_t recv_addr_len = sizeof(recv_addr);
 		NetworkMessage *message = new NetworkMessage();

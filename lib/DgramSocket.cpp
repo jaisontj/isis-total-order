@@ -2,6 +2,7 @@
 #include "Log.h"
 
 #include <netdb.h>
+#include <cstring>
 #include <iostream>
 #include <unistd.h>
 #include <arpa/inet.h>
@@ -63,7 +64,6 @@ DgramSocket::DgramSocket(
 		string port,
 		int should_reuse_addr
 		) {
-	Log::v("DgramSocket: Hostname->" + hostname);
 	struct addrinfo hints = init_dgram_hints(hint_flag);
 	this->servinfo =  get_addr_info(hostname == "" ? NULL : hostname.c_str(), port.c_str(), &hints);
 	int socket_fd;

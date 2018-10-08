@@ -27,3 +27,7 @@ void log(SeqMessage *seq_msg) {
 			+ " FinalSequence->" + std::to_string(seq_msg->final_seq)
 			+ " SeqProposerID->" + std::to_string(seq_msg->final_seq_proposer));
 }
+
+void log_line() {
+	Log::d("-----------------------------------------------------------------------------------------------");
+}

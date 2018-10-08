@@ -13,6 +13,9 @@ void Log::d(std::string message) {
 }
 
 void Log::e(std::string message) {
-	if (LOG_LEVEL == ERROR || LOG_LEVEL == DEBUG || LOG_LEVEL == VERBOSE)
+	if (LOG_LEVEL == ERROR || LOG_LEVEL == DEBUG || LOG_LEVEL == VERBOSE) {
+		std::cout<<"######################################################################"<<std::endl;
 		std::cout<<message<<std::endl;
+		std::cout<<"######################################################################"<<std::endl;
+	}
 }
