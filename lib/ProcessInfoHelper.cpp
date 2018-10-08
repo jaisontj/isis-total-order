@@ -5,10 +5,10 @@
 #include <unistd.h>
 
 void ProcessInfoHelper::init_from_file(std::string filepath) {
-	char self_name[_POSIX_HOST_NAME_MAX];
+	char name[255];
 	uint32_t self_id = 0;
 
-	if (gethostname(self_name, _POSIX_HOST_NAME_MAX) != 0) {
+	if (gethostname(name, 255) != 0) {
 		perror("Unable to get hostname");
 		exit(0);
 	}
@@ -24,7 +24,7 @@ void ProcessInfoHelper::init_from_file(std::string filepath) {
 				.id= ++line_num
 			};
 			file_content.push_back(pi);
-			if (line_content == self_name) self_id = line_num;
+			if (line_content == name) self_id = line_num;
 		}
 		file.close();
 	} else {
@@ -36,7 +36,7 @@ void ProcessInfoHelper::init_from_file(std::string filepath) {
 		std::cout<<"Unable to find hostname in provided file at "<<filepath<<". Please ensure that the hostname is provided in file."<<std::endl;
 	}
 
-	ProcessInfoHelper::SELF = { .hostname = self_name, .id = self_id };
+	ProcessInfoHelper::SELF = ProcessInfo{ .hostname = name, .id = self_id };
 	ProcessInfoHelper::PROCESS_LIST = file_content;
 }
 

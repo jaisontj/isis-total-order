@@ -1,6 +1,5 @@
 #include<iostream>
 #include<map>
-#include<unistd.h>
 #include<fstream>
 #include<string>
 #include<cstring>
