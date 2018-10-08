@@ -242,7 +242,7 @@ int main(int argc, char* argv[]){
 
 	thread listener(start_msg_listener, c_args);
 	//TODO: replace this with a way to ensure that all processes are up
-	sleep(2);
+	sleep(4);
 
 	send_data_messages(c_args.msg_count);
 	//wait for listener thread.
