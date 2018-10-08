@@ -22,6 +22,16 @@
 #include "../lib/Log.h"
 #include "../lib/LogHelper.h"
 
+
+/**
+ * TODO:
+ *   - Delay and Drop messages. HANDLE with retry and if two retries fail. Exit by declaring one process as crashed.
+ *   - Better command line args, use getlongport. Differentiate between debug, verbose and error. Support for drop and delay as well.
+ *	 - Perform handshake to check if all processes are up, before sending messages.
+ *   - Ack for sequence message.
+ *   - Look into duplicate seq numbers.
+ */
+
 //expected network delay of 1 sec
 #define NETWORK_DELAY 1
 #define MAX_RETRY_COUNT 2
