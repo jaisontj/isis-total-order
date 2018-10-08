@@ -8,8 +8,8 @@ class SeqProvider {
 	private:
 		std::atomic<uint32_t> sequence;
 		void set_sequence(uint32_t new_seq);
-	public:
 		uint32_t get_sequence();
+	public:
 		void update_sequence_if_greater(uint32_t new_seq);
 		uint32_t increment_sequence();
 };

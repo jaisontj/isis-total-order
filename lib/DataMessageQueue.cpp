@@ -1,5 +1,6 @@
 #include<map>
 #include<mutex>
+#include<algorithm>
 
 #include "DataMessageQueue.h"
 #include "NetworkDataTypes.h"

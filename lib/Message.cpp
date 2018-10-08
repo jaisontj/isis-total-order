@@ -28,7 +28,7 @@ std::string Message::get_as_string() {
 void Message::mark_as_deliverable(uint32_t final_seq, uint32_t proposer) {
 	this->mstatus = DELIVERABLE;
 	this->final_seq = final_seq;
-	this->process_id = proposer;
+	this->proposer_id = proposer;
 }
 
 
