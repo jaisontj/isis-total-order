@@ -34,6 +34,7 @@ void ProcessInfoHelper::init_from_file(std::string filepath) {
 
 	if (self_id == 0) {
 		std::cout<<"Unable to find hostname in provided file at "<<filepath<<". Please ensure that the hostname is provided in file."<<std::endl;
+		exit(0);
 	}
 
 	ProcessInfoHelper::SELF = ProcessInfo{ .hostname = name, .id = self_id };
