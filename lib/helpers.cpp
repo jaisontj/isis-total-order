@@ -70,7 +70,7 @@ CommandArgs parse_cmg_args(int argc, char* argv[]) {
 				msg_count = atoi(optarg);
 				break;
 			case 'v':
-				Log::LOG_LEVEL = VERBOSE;
+				Log::LOG_LEVEL = DEBUG;
 				break;
 			case 'd':
 				delay_amount = atoi(optarg);
