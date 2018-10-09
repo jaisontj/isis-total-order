@@ -1,6 +1,9 @@
 #include "DeliveryTracker.h"
 #include "Log.h"
 #include "MessageDispatcher.h"
+#include "LogHelper.h"
+
+#include<thread>
 
 DeliveryTracker::DeliveryTracker() {}
 
@@ -28,9 +31,21 @@ bool DeliveryTracker::are_equal(MessageInfo m1, MessageInfo m2) {
 }
 
 void DeliveryTracker::track_message(MessageInfo msg, time_t expected_delivery_time) {
+	if (msg.message.type == 3) {
+		Log::d("DeliveryTracker-> Received SeqMessage. Does not track this yet. Skipping..");
+		return;
+	}
 	std::lock_guard<std::mutex> lk(m);
 	msg.expected_delivery_time = expected_delivery_time;
 	undelivered_msgs.push_back(msg);
+	DeliveryTracker::log_status(undelivered_msgs);
+	if (!is_tracking.load()) {
+		is_tracking.store(true);
+		std::thread t(&DeliveryTracker::track_delivery, this);
+		t.detach();
+	}
+	Log::d("Added new message to track delivery");
+	DeliveryTracker::log_status(undelivered_msgs);
 }
 
 std::vector<MessageInfo> DeliveryTracker::get_undelivered_msgs() {
@@ -52,6 +67,12 @@ void DeliveryTracker::track_delivery() {
 	Log::d("Tracking delivery.....");
 	while (true) {
 		//Go through messages and find messages who exceeded timeout
+		std::vector<MessageInfo> tracked_messages = get_undelivered_msgs();
+		if (tracked_messages.size() == 0) {
+			Log::d("No more messages to track. Will restart once more messages are added.");
+			is_tracking.store(false);
+			return;
+		}
 		for (auto const &msg: get_undelivered_msgs()) {
 			time_t current_time = time(NULL);
 			if (msg.expected_delivery_time < current_time) {
@@ -63,6 +84,11 @@ void DeliveryTracker::track_delivery() {
 						<<std::endl;
 					exit(1);
 				}
+				Log::d("The following message has exceeded timeout from: hostname->" + msg.hostname
+						+ " at port->" + msg.port
+						+ " RetryCount->" + std::to_string(msg.retry_count)
+						+ "Message-> " + get_as_string((NetworkMessage *) &msg.message)
+						+ "\n Resending.....");
 				MessageDispatcher::get_instance()
 					.add_message_to_queue((NetworkMessage *) &msg.message,
 							msg.message_size,
@@ -76,5 +102,18 @@ void DeliveryTracker::track_delivery() {
 }
 
 void DeliveryTracker::mark_as_delivered(MessageInfo m) {
+	Log::d("The following message has been delivered to: hostname->" + m.hostname
+			+ " at port->" + m.port
+			+ " Message->" + get_as_string(&m.message));
 	remove_undelivered_msg(m);
 }
+
+void DeliveryTracker::log_status(std::vector<MessageInfo> msgs) {
+	std::string l = " Messages: \n";
+	for (auto const &m: msgs) {
+		l += get_as_string(m) + "\n";
+	}
+	Log::d("DeliveryTracker status: Count: " + std::to_string(msgs.size())
+			+ " Current Time: " + std::to_string(time(NULL)) + l);
+}
+

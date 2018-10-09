@@ -20,7 +20,7 @@
 
 using namespace std;
 
-LogLevel Log::LOG_LEVEL = NONE;
+LogLevel Log::LOG_LEVEL = ERROR;
 vector<ProcessInfo> ProcessInfoHelper::PROCESS_LIST;
 ProcessInfo ProcessInfoHelper::SELF;
 

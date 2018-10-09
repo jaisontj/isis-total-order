@@ -9,15 +9,7 @@
 #include<ctime>
 
 #include "NetworkDataTypes.h"
-
-struct MessageInfo {
-	NetworkMessage message;
-	size_t message_size;
-	std::string hostname;
-	std::string port;
-	int retry_count;
-	time_t expected_delivery_time;
-};
+#include "MessageInfo.h"
 
 class MessageDispatcher {
 	private:

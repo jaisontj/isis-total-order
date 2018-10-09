@@ -5,6 +5,7 @@
 #include "LogHelper.h"
 #include "MessageQueue.h"
 #include "helpers.h"
+#include "DeliveryTracker.h"
 
 MessageHandler::MessageHandler(uint32_t total_proposal_count) {
 	proposal_tracker = new DataMessageSeqTracker();
@@ -31,13 +32,9 @@ void MessageHandler::handle_data_message(DataMessage *message) {
 	//Add it to unordered queue
 	MessageQueue::get_instance().add_undeliverable(ID, ack.msg_id, ack.sender, ack.proposed_seq, ack.proposer);
 
-	Log::d("Received DataMessage-------------------");
-	log(message);
-	Log::d("Sending ACK----------------------------");
-	log((AckMessage *) &ack);
+	Log::v("Received->" + get_as_string(message));
+	Log::v("Sending ->" + get_as_string((AckMessage *) &ack));
 	send_message((NetworkMessage *) &ack, sizeof ack, p);
-	//TODO: wait for final_seq
-	//TODO: What happens if no ack is received?
 }
 
 void MessageHandler::handle_ack_message(AckMessage *message) {
@@ -48,10 +45,8 @@ void MessageHandler::handle_ack_message(AckMessage *message) {
 			message->proposed_seq,
 			message->proposer
 			);
-	Log::d("Recieved AckMessage---------------------");
-	log(message);
+	Log::d("Recieved -> " + get_as_string(message));
 	if (proposal_tracker->has_received_all_proposals(message_id)) {
-		Log::d("Sending SeqMessage------------------");
 		uint32_t final_seq = proposal_tracker->get_max_proposed_seq(message_id);
 		uint32_t final_seq_proposer = proposal_tracker->get_max_seq_proposer_id(message_id);
 		SeqMessage seq_message = {
@@ -61,11 +56,11 @@ void MessageHandler::handle_ack_message(AckMessage *message) {
 			.final_seq = final_seq,
 			.final_seq_proposer = final_seq_proposer
 		};
-		log((SeqMessage *) &seq_message);
+		Log::d("Sending ->" + get_as_string((SeqMessage *) &seq_message));
 		send_message((NetworkMessage *) &seq_message, sizeof seq_message, ProcessInfoHelper::PROCESS_LIST);
 		//TODO: what happens if the above message does not reach?
 	} else {
-		Log::d("Has not received all proposals yet-------------------------------------");
+		Log::d("Has not received all proposals yet");
 	}
 	//TODO:if no, chill out. Wait....
 }
@@ -78,24 +73,51 @@ void MessageHandler::handle_seq_message(SeqMessage *seq_msg) {
 		SeqProvider::get_instance().update_sequence_if_greater(seq_msg->final_seq);
 		//TODO: send ack for this seq messsage
 	} catch(string m) {
-		cout<<"Error with SequenceMessage: "<<m<<endl;
+		Log::e("Error with SequenceMessage: " + m);
 	}
 }
 
 void MessageHandler::handle_message(NetworkMessage message) {
-	switch(message.type) {
-		case 1:
-			handle_data_message((DataMessage *) &message);
-			return;
-		case 2:
-			handle_ack_message((AckMessage *) &message);
-			return;
-		case 3:
-			handle_seq_message((SeqMessage *) &message);
-			return;
-		default:
-			Log::e("Received unknown message type from network. Ignoring");
+	if (message.type == 1) {
+		handle_data_message((DataMessage *) &message);
+		return;
 	}
+
+	if (message.type == 2) {
+		ProcessInfo p = ProcessInfoHelper::get_process_info(message.proposer_id);
+		NetworkMessage m = message;
+		m.type = 1;
+		MessageInfo m_info = MessageInfo {
+			.message = m,
+				.message_size = sizeof message,
+				.hostname = p.hostname,
+				.port = p.port,
+				.retry_count = 0,
+				.expected_delivery_time = time(NULL)
+		};
+		DeliveryTracker::get_instance().mark_as_delivered(m_info);
+		handle_ack_message((AckMessage *) &message);
+		return;
+	}
+
+	if (message.type == 3) {
+		ProcessInfo p = ProcessInfoHelper::get_process_info(message.sender);
+		NetworkMessage m = message;
+		m.type = 2;
+		MessageInfo m_info = MessageInfo {
+			.message = m,
+				.message_size = sizeof message,
+				.hostname = p.hostname,
+				.port = p.port,
+				.retry_count = 0,
+				.expected_delivery_time = time(NULL)
+		};
+		DeliveryTracker::get_instance().mark_as_delivered(m_info);
+		handle_seq_message((SeqMessage *) &message);
+		return;
+	}
+
+	Log::e("Received unknown message type from network. Ignoring");
 }
 
 

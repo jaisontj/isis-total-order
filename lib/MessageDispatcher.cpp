@@ -47,8 +47,7 @@ void MessageDispatcher::dispatch_messages() {
 		auto const &minfo = get_queue_front();
 		try {
 			SenderSocket socket = SenderSocket(minfo.hostname, minfo.port);
-			Log::d("Sending NetworkMessage to socket:");
-			log((NetworkMessage *) &minfo.message);
+			Log::d("Sending-> " + get_as_string((NetworkMessage *) &minfo.message));
 			int sent_bytes = socket.send((void *) &minfo.message, minfo.message_size);
 			if (sent_bytes != -1) {
 				time_t delivery_time = DeliveryTracker::get_expected_delivery_time(minfo.message);

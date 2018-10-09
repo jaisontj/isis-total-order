@@ -17,6 +17,7 @@
 class DeliveryTracker {
 	private:
 		std::mutex m;
+		std::atomic<bool> is_tracking;
 		DeliveryTracker();
 		std::vector<MessageInfo> undelivered_msgs;
 		std::vector<MessageInfo> get_undelivered_msgs();
@@ -30,6 +31,7 @@ class DeliveryTracker {
 		static bool are_equal(MessageInfo m1, MessageInfo m2);
 		void track_message(MessageInfo m, time_t expected_delivery_time);
 		void mark_as_delivered(MessageInfo m);
+		static void log_status(std::vector<MessageInfo> msgs);
 };
 
 #endif

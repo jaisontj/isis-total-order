@@ -2,11 +2,13 @@
 #define LOG_HELPER_H
 
 #include "NetworkDataTypes.h"
+#include "MessageInfo.h"
 
-void log(NetworkMessage *message);
-void log(DataMessage *message);
-void log(AckMessage *message);
-void log(SeqMessage *message);
+std::string get_as_string(NetworkMessage *message);
+std::string get_as_string(DataMessage *message);
+std::string get_as_string(AckMessage *message);
+std::string get_as_string(SeqMessage *message);
+std::string get_as_string(MessageInfo message);
 void log_line();
 
 #endif
