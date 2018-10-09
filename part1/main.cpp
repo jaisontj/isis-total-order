@@ -1,13 +1,6 @@
 #include<iostream>
-#include<map>
-#include<fstream>
-#include<string>
 #include<cstring>
 #include<vector>
-#include<sys/socket.h>
-#include<netinet/in.h>
-#include<netdb.h>
-#include<arpa/inet.h>
 #include<unistd.h>
 #include<thread>
 
@@ -16,7 +9,6 @@
 #include "../lib/helpers.h"
 #include "../lib/DataMessageSeqTracker.h"
 #include "../lib/ListenerSocket.h"
-#include "../lib/MessageDispatcher.h"
 #include "../lib/Log.h"
 #include "../lib/LogHelper.h"
 #include "../lib/ProcessInfoHelper.h"
@@ -36,22 +28,9 @@ CommandArgs c_args;
 DataMessageQueue message_queue;
 DataMessageSeqTracker data_message_proposal_tracker;
 
-void send_message_to_processes(NetworkMessage *message, size_t message_size, vector<ProcessInfo> processes) {
-	string port = c_args.port;
-	for (auto const& process: processes) {
-		string hostname = process.hostname;
-		MessageDispatcher::get_instance().add_message_to_queue(message, message_size, hostname.c_str(), port);
-	}
-}
-
-void send_message_to_host(NetworkMessage *message, size_t message_size, string hostname) {
-	MessageDispatcher::get_instance().add_message_to_queue(message, message_size, hostname, c_args.port);
-}
-
 void handle_data_message(DataMessage *message) {
 	ProcessInfo p = ProcessInfoHelper::get_process_info(message->sender);
-	string hostname = p.hostname;
-	if (hostname == "") {
+	if (p.hostname == "") {
 		Log::e("Received DataMessage from unknown sender. Ignoring");
 		return;
 	}
@@ -73,7 +52,7 @@ void handle_data_message(DataMessage *message) {
 	log(message);
 	Log::d("Sending ACK----------------------------");
 	log((AckMessage *) &ack);
-	send_message_to_host((NetworkMessage *) &ack, sizeof ack, hostname.c_str());
+	send_message((NetworkMessage *) &ack, sizeof ack, p);
 	//TODO: wait for final_seq
 	//TODO: What happens if no ack is received?
 }
@@ -100,7 +79,7 @@ void handle_ack_message(AckMessage *message) {
 			.final_seq_proposer = final_seq_proposer
 		};
 		log((SeqMessage *) &seq_message);
-		send_message_to_processes((NetworkMessage *) &seq_message, sizeof seq_message, ProcessInfoHelper::PROCESS_LIST);
+		send_message((NetworkMessage *) &seq_message, sizeof seq_message, ProcessInfoHelper::PROCESS_LIST);
 		//TODO: what happens if the above message does not reach?
 	} else {
 		Log::d("Has not received all proposals yet-------------------------------------");
@@ -158,7 +137,7 @@ void send_data_messages(uint32_t count) {
 			.data = 1234
 		};
 
-		send_message_to_processes((NetworkMessage *) &message, sizeof message, ProcessInfoHelper::PROCESS_LIST);
+		send_message((NetworkMessage *) &message, sizeof message, ProcessInfoHelper::PROCESS_LIST);
 
 		//Send messages in 1 second intervals
 		sleep(1);
@@ -170,7 +149,7 @@ int main(int argc, char* argv[]){
 	c_args = parse_cmg_args(argc, argv);
 
 	//Read hostfile for a list of hosts and their respective line num
-	ProcessInfoHelper::init_from_file(c_args.filename);
+	ProcessInfoHelper::init_from_file(c_args.filename, c_args.port);
 
 	data_message_proposal_tracker.set_max_proposal_count(ProcessInfoHelper::PROCESS_LIST.size());
 

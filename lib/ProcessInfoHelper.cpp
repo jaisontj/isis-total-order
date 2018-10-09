@@ -4,7 +4,7 @@
 #include <vector>
 #include <unistd.h>
 
-void ProcessInfoHelper::init_from_file(std::string filepath) {
+void ProcessInfoHelper::init_from_file(std::string filepath, std::string port) {
 	char name[255];
 	uint32_t self_id = 0;
 
@@ -20,8 +20,9 @@ void ProcessInfoHelper::init_from_file(std::string filepath) {
 	if (file.is_open()) {
 		while(getline(file, line_content)) {
 			ProcessInfo pi = {
-				.hostname= line_content,
-				.id= ++line_num
+				.hostname = line_content,
+				.port = port,
+				.id = ++line_num
 			};
 			file_content.push_back(pi);
 			if (line_content == name) self_id = line_num;
@@ -37,7 +38,10 @@ void ProcessInfoHelper::init_from_file(std::string filepath) {
 		exit(0);
 	}
 
-	ProcessInfoHelper::SELF = ProcessInfo{ .hostname = name, .id = self_id };
+	ProcessInfoHelper::SELF = ProcessInfo {
+		.hostname = name, .port = port, .id = self_id
+	};
+
 	ProcessInfoHelper::PROCESS_LIST = file_content;
 }
 

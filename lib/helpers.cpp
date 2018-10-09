@@ -8,6 +8,9 @@
 
 #include "custom_types.h"
 #include "Log.h"
+#include "NetworkDataTypes.h"
+#include "ProcessInfoHelper.h"
+#include "MessageDispatcher.h"
 
 using namespace std;
 
@@ -86,5 +89,18 @@ CommandArgs parse_cmg_args(int argc, char* argv[]) {
 		show_usage_and_exit();
 	return (CommandArgs) { msg_count, port, filepath };
 }
+
+void send_message(NetworkMessage *message, size_t message_size, vector<ProcessInfo> processes) {
+	for (auto const& process: processes) {
+		string hostname = process.hostname;
+		string port = process.port;
+		MessageDispatcher::get_instance().add_message_to_queue(message, message_size, hostname.c_str(), port);
+	}
+}
+
+void send_message(NetworkMessage *message, size_t message_size, ProcessInfo process) {
+	MessageDispatcher::get_instance().add_message_to_queue(message, message_size, process.hostname, process.port);
+}
+
 
 
