@@ -16,7 +16,7 @@ ListenerSocket::ListenerSocket(std::string port) : DgramSocket(AI_PASSIVE, "", p
 	free_serve_info();
 }
 
-void ListenerSocket::start_listening(SocketMessageHandler handler) {
+void ListenerSocket::start_listening(MessageHandler &handler) {
 	while (true) {
 		Log::v("Listening for messages.....");
 		struct sockaddr_storage recv_addr;
@@ -30,7 +30,7 @@ void ListenerSocket::start_listening(SocketMessageHandler handler) {
 		Log::v("Listener: packet is " + std::to_string(recv_bytes) + " bytes long");
 		Log::d("Received NetworkMessage-----------------");
 		log(message);
-		handler(*message);
+		handler.handle_message(*message);
 		delete message;
 	}
 }

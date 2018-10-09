@@ -3,13 +3,12 @@
 
 #include "DgramSocket.h"
 #include "NetworkDataTypes.h"
-
-typedef void (*SocketMessageHandler)(NetworkMessage message);
+#include "MessageHandler.h"
 
 class ListenerSocket: public DgramSocket {
 	public:
 		ListenerSocket(std::string port);
-		void start_listening(SocketMessageHandler handler);
+		void start_listening(MessageHandler &handler);
 };
 
 
