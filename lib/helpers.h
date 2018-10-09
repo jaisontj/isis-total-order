@@ -17,5 +17,4 @@ bool should_drop_message();
 void simulate_delay_if_needed();
 void send_message(NetworkMessage *message, size_t message_size, vector<ProcessInfo> processes);
 void send_message(NetworkMessage *message, size_t message_size, ProcessInfo process);
-
 #endif
