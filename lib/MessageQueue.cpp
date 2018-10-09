@@ -2,14 +2,21 @@
 #include<mutex>
 #include<algorithm>
 
-#include "DataMessageQueue.h"
+#include "MessageQueue.h"
 #include "NetworkDataTypes.h"
 #include "Log.h"
 #include "LogHelper.h"
 
 using namespace std;
 
-void DataMessageQueue::log_mqueue() {
+MessageQueue::MessageQueue() {}
+
+MessageQueue& MessageQueue::get_instance() {
+	static MessageQueue instance;
+	return instance;
+}
+
+void MessageQueue::log_mqueue() {
 	log_line();
 	Log::d("Printing currenty present messages in queue...");
 	Log::d("Count: " + to_string(mqueue.size()));
@@ -19,7 +26,7 @@ void DataMessageQueue::log_mqueue() {
 	log_line();
 }
 
-void DataMessageQueue::sort_mqueue() {
+void MessageQueue::sort_mqueue() {
 	sort(mqueue.begin(), mqueue.end(), [] (Message const &lhs, Message const &rhs) {
 			if (lhs.final_seq == rhs.final_seq) {
 			if (lhs.mstatus == rhs.mstatus) {
@@ -31,7 +38,7 @@ void DataMessageQueue::sort_mqueue() {
 			});
 }
 
-void DataMessageQueue::print_ordered_deliverables() {
+void MessageQueue::print_ordered_deliverables() {
 	log_mqueue();
 	sort_mqueue();
 	while(mqueue.begin() != mqueue.end()) {
@@ -45,7 +52,7 @@ void DataMessageQueue::print_ordered_deliverables() {
 	}
 }
 
-void DataMessageQueue::add_undeliverable(
+void MessageQueue::add_undeliverable(
 		uint32_t process_id,
 		uint32_t msg_id,
 		uint32_t sender_id,
@@ -56,7 +63,7 @@ void DataMessageQueue::add_undeliverable(
 	mqueue.push_back(Message(process_id,msg_id, sender_id, final_seq, proposer_id));
 }
 
-void DataMessageQueue::mark_as_deliverable(SeqMessage message) {
+void MessageQueue::mark_as_deliverable(SeqMessage message) {
 	lock_guard<mutex> lk(m);
 	Log::d("Going to mark message as deliverable");
 	bool marked = false;

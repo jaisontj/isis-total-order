@@ -25,7 +25,6 @@ vector<ProcessInfo> ProcessInfoHelper::PROCESS_LIST;
 ProcessInfo ProcessInfoHelper::SELF;
 
 CommandArgs c_args;
-DataMessageQueue message_queue;
 DataMessageSeqTracker data_message_proposal_tracker;
 
 void handle_data_message(DataMessage *message) {
@@ -46,7 +45,7 @@ void handle_data_message(DataMessage *message) {
 		.proposer = ID
 	};
 	//Add it to unordered queue
-	message_queue.add_undeliverable(ID, ack.msg_id, ack.sender, ack.proposed_seq, ack.proposer);
+	MessageQueue::get_instance().add_undeliverable(ID, ack.msg_id, ack.sender, ack.proposed_seq, ack.proposer);
 
 	Log::d("Received DataMessage-------------------");
 	log(message);
@@ -90,7 +89,7 @@ void handle_ack_message(AckMessage *message) {
 void handle_seq_message(SeqMessage *seq_msg) {
 	//attach the final sequence to the respective received_message
 	try {
-		message_queue.mark_as_deliverable(*seq_msg);
+		MessageQueue::get_instance().mark_as_deliverable(*seq_msg);
 		//update last_sequence to this one, if greater
 		SeqProvider::get_instance().update_sequence_if_greater(seq_msg->final_seq);
 		//TODO: send ack for this seq messsage
@@ -138,6 +137,8 @@ void send_data_messages(uint32_t count) {
 		};
 
 		send_message((NetworkMessage *) &message, sizeof message, ProcessInfoHelper::PROCESS_LIST);
+
+		//await ack for message
 
 		//Send messages in 1 second intervals
 		sleep(1);
