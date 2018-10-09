@@ -10,6 +10,13 @@ using namespace std;
 
 int MessageDispatcher::MAX_DELAY = 5;
 
+MessageDispatcher::MessageDispatcher() {}
+
+MessageDispatcher& MessageDispatcher::get_instance() {
+	static MessageDispatcher instance;
+	return instance;
+}
+
 MessageInfo MessageDispatcher::get_queue_front() {
 	lock_guard<mutex> lk(m);
 	auto const &m_info = mqueue.front();

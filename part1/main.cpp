@@ -35,18 +35,17 @@ ProcessInfo ProcessInfoHelper::SELF;
 CommandArgs c_args;
 DataMessageQueue message_queue;
 DataMessageSeqTracker data_message_proposal_tracker;
-MessageDispatcher message_dispatcher;
 
 void send_message_to_processes(NetworkMessage *message, size_t message_size, vector<ProcessInfo> processes) {
 	string port = c_args.port;
 	for (auto const& process: processes) {
 		string hostname = process.hostname;
-		message_dispatcher.add_message_to_queue(message, message_size, hostname.c_str(), port);
+		MessageDispatcher::get_instance().add_message_to_queue(message, message_size, hostname.c_str(), port);
 	}
 }
 
 void send_message_to_host(NetworkMessage *message, size_t message_size, string hostname) {
-	message_dispatcher.add_message_to_queue(message, message_size, hostname, c_args.port);
+	MessageDispatcher::get_instance().add_message_to_queue(message, message_size, hostname, c_args.port);
 }
 
 void handle_data_message(DataMessage *message) {
@@ -161,7 +160,6 @@ void send_data_messages(uint32_t count) {
 
 		send_message_to_processes((NetworkMessage *) &message, sizeof message, ProcessInfoHelper::PROCESS_LIST);
 
-		//TODO: is this fine?
 		//Send messages in 1 second intervals
 		sleep(1);
 	}
