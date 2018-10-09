@@ -80,7 +80,8 @@ void DeliveryTracker::track_delivery() {
 					std::cout<<"Maybe process listening at "
 						<<msg.hostname<<" crashed."
 						<<"No response after " <<MAX_RETRY_COUNT<<" retries."
-						<<"Exiting application"
+						<<" Message->"<<get_as_string((NetworkMessage *) &msg.message)
+						<<". Exiting application"
 						<<std::endl;
 					exit(1);
 				}

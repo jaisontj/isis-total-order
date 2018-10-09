@@ -11,11 +11,9 @@
 #include "NetworkDataTypes.h"
 #include "ProcessInfoHelper.h"
 #include "MessageDispatcher.h"
+#include "NetworkStatus.h"
 
 using namespace std;
-
-bool DROP_MESSAGE = false;
-int delay_amount = 0;
 
 string& trim_string(string &str) {
 	const string &trim_chars = "\t\n\f\v\r ";
@@ -24,25 +22,6 @@ string& trim_string(string &str) {
 	//trim from the right
 	str.erase(str.find_last_not_of(trim_chars) + 1);
 	return str;
-}
-
-int get_message_delay() {
-	return delay_amount;
-}
-
-void simulate_delay_if_needed() {
-	int delay = get_message_delay();
-	Log::d("Delay in handling message: " + to_string(delay));
-	sleep(delay);
-}
-
-bool should_drop_message() {
-	if (DROP_MESSAGE) {
-		//decide randomly
-		srand(time(0));
-		return rand() % 2 == 0;
-	}
-	return false;
 }
 
 void show_usage_and_exit() {
@@ -54,7 +33,7 @@ CommandArgs parse_cmg_args(int argc, char* argv[]) {
 	int opt, msg_count, temp_port;
 	string port = "";
 	string filepath;
-	while((opt = getopt(argc, argv, "p:h:c:vd:l")) != -1) {
+	while((opt = getopt(argc, argv, "p:h:c:v:d:l")) != -1) {
 		switch(opt) {
 			case 'p':
 				temp_port = atoi(optarg);
@@ -71,13 +50,16 @@ CommandArgs parse_cmg_args(int argc, char* argv[]) {
 				msg_count = atoi(optarg);
 				break;
 			case 'v':
-				Log::LOG_LEVEL = DEBUG;
+				if (strcmp(optarg, "debug") == 0) Log::LOG_LEVEL = DEBUG;
+				if (strcmp(optarg, "verbose") == 0) Log::LOG_LEVEL = VERBOSE;
+				if (strcmp(optarg, "error") == 0) Log::LOG_LEVEL = ERROR;
+				if (strcmp(optarg, "info") == 0) Log::LOG_LEVEL = INFO;
 				break;
 			case 'd':
-				delay_amount = atoi(optarg);
+				NetworkStatus::DELIVERY_DELAY = atoi(optarg);
 				break;
 			case 'l':
-				DROP_MESSAGE = true;
+				NetworkStatus::DROPS_MESSAGE = true;
 				break;
 			default:
 				show_usage_and_exit();

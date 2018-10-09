@@ -9,7 +9,7 @@ PORT = 35808
 HOSTFILE = hostnames.txt
 COUNT = 10
 
-LIB_FILES = ../lib/MessageQueue.cpp ../lib/Message.cpp ../lib/Log.cpp ../lib/LogHelper.cpp ../lib/helpers.cpp ../lib/DataMessageSeqTracker.cpp ../lib/ListenerSocket.cpp ../lib/SeqProvider.cpp ../lib/DgramSocket.cpp ../lib/MessageDispatcher.cpp ../lib/SenderSocker.cpp ../lib/ProcessInfoHelper.cpp ../lib/MessageHandler.cpp ../lib/DeliveryTracker.cpp
+LIB_FILES = ../lib/MessageQueue.cpp ../lib/Message.cpp ../lib/Log.cpp ../lib/LogHelper.cpp ../lib/helpers.cpp ../lib/DataMessageSeqTracker.cpp ../lib/ListenerSocket.cpp ../lib/SeqProvider.cpp ../lib/DgramSocket.cpp ../lib/MessageDispatcher.cpp ../lib/SenderSocker.cpp ../lib/ProcessInfoHelper.cpp ../lib/MessageHandler.cpp ../lib/DeliveryTracker.cpp ../lib/NetworkStatus.cpp
 
 all: clean build run
 
@@ -17,7 +17,7 @@ alldebug: clean build rundebug
 
 cleanandbuild: clean build
 
-real: clean build runwithlossanddelay
+real: clean build runreal
 
 build: $(TARGET)
 
@@ -28,16 +28,22 @@ run:
 	./$(TARGET) -p $(PORT) -h $(HOSTFILE) -c $(COUNT)
 
 rundebug:
-	./$(TARGET) -p $(PORT) -h $(HOSTFILE) -c $(COUNT) -v
+	./$(TARGET) -p $(PORT) -h $(HOSTFILE) -c $(COUNT) -v debug
+
+runinfo:
+	./$(TARGET) -p $(PORT) -h $(HOSTFILE) -c $(COUNT) -v info
 
 runwithdelay:
-	./$(TARGET) -p $(PORT) -h $(HOSTFILE) -c $(COUNT) -v -d 2
+	./$(TARGET) -p $(PORT) -h $(HOSTFILE) -c $(COUNT) -v error -d 2
 
 runwithloss:
 	./$(TARGET) -p $(PORT) -h $(HOSTFILE) -c $(COUNT) -v -l
 
 runwithlossanddelay:
-	./$(TARGET) -p $(PORT) -h $(HOSTFILE) -c $(COUNT) -v -d 2 -l
+	./$(TARGET) -p $(PORT) -h $(HOSTFILE) -c $(COUNT) -v debug -d 2 -l
+
+runreal:
+	./$(TARGET) -p $(PORT) -h $(HOSTFILE) -c $(COUNT) -v error -d 2 -l
 
 clean:
 	rm -r $(TARGET)

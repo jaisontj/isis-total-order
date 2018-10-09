@@ -13,17 +13,15 @@
 #include "../lib/LogHelper.h"
 #include "../lib/ProcessInfoHelper.h"
 #include "../lib/MessageHandler.h"
-
-//expected network delay of 1 sec
-#define NETWORK_DELAY 1
-#define MAX_RETRY_COUNT 2
+#include "../lib/NetworkStatus.h"
 
 using namespace std;
 
-LogLevel Log::LOG_LEVEL = ERROR;
+LogLevel Log::LOG_LEVEL = NONE;
 vector<ProcessInfo> ProcessInfoHelper::PROCESS_LIST;
 ProcessInfo ProcessInfoHelper::SELF;
-
+bool NetworkStatus::DROPS_MESSAGE;
+int NetworkStatus::DELIVERY_DELAY;
 
 void start_msg_listener(CommandArgs c_args, MessageHandler *handler) {
 	Log::d("Starting message listener");
@@ -59,16 +57,12 @@ void send_data_messages(uint32_t count) {
 
 int main(int argc, char* argv[]) {
 	CommandArgs c_args = parse_cmg_args(argc, argv);
-
 	//Read hostfile for a list of hosts and their respective line num
 	ProcessInfoHelper::init_from_file(c_args.filename, c_args.port);
-
 	MessageHandler handler = MessageHandler(ProcessInfoHelper::PROCESS_LIST.size());
-
 	thread listener(start_msg_listener, c_args, &handler);
 	//TODO: replace this with a way to ensure that all processes are up
 	sleep(4);
-
 	send_data_messages(c_args.msg_count);
 	//wait for listener thread.
 	listener.join();

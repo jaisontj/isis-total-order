@@ -75,7 +75,6 @@ void MessageQueue::mark_as_deliverable(SeqMessage message) {
 		}
 	}
 	if (!marked) {
-		Log::e("Could not find message to mark. NOT POSSIBLE. Throwing...");
 		throw string("Could not find the message to mark. NOT POSSIBLE");
 	}
 	print_ordered_deliverables();
