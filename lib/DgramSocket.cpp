@@ -45,7 +45,9 @@ struct addrinfo* DgramSocket::get_addr_info(
 	Log::v("Getting AddressInfo: Hostname->" + string(h_name) + " Port->" + port);
 	int rv = getaddrinfo(hostname, port, hints, &servinfo);
 	if (rv != 0) {
-		cout<<"getaddrinfo error: "<<gai_strerror(rv)<<endl;
+		Log::e("getaddrinfo error: " + string(gai_strerror(rv))
+				+ " Hostname->" + string(hostname)
+				+ " Port->" + string(port));
 		throw string("Unable to getaddrinfo");
 	}
 	return servinfo;
