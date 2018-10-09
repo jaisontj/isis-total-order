@@ -4,11 +4,16 @@
 #include <string>
 #include <vector>
 
-#include "custom_types.h"
 #include "NetworkDataTypes.h"
 #include "ProcessInfoHelper.h"
 
 using namespace std;
+
+struct CommandArgs {
+	int msg_count;
+	string port;
+	string filename;
+};
 
 void show_usage_and_exit();
 CommandArgs parse_cmg_args(int, char* []);

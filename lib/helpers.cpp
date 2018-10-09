@@ -6,7 +6,7 @@
 #include <cstdlib>
 #include <ctime>
 
-#include "custom_types.h"
+#include "helpers.h"
 #include "Log.h"
 #include "NetworkDataTypes.h"
 #include "ProcessInfoHelper.h"
