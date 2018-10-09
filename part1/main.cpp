@@ -4,7 +4,7 @@
 #include<unistd.h>
 #include<thread>
 
-#include "../lib/DataMessageQueue.h"
+#include "../lib/MessageQueue.h"
 #include "../lib/SeqProvider.h"
 #include "../lib/helpers.h"
 #include "../lib/DataMessageSeqTracker.h"
