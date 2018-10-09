@@ -6,6 +6,7 @@
 #include<mutex>
 #include<vector>
 #include<queue>
+#include<ctime>
 
 #include "NetworkDataTypes.h"
 
@@ -14,6 +15,8 @@ struct MessageInfo {
 	size_t message_size;
 	std::string hostname;
 	std::string port;
+	int retry_count;
+	time_t expected_delivery_time;
 };
 
 class MessageDispatcher {
@@ -34,7 +37,7 @@ class MessageDispatcher {
 		MessageDispatcher(MessageDispatcher const&) = delete;
 		void operator=(MessageDispatcher const&) = delete;
 		void dispatch_messages();
-		void add_message_to_queue(NetworkMessage *message, size_t message_size, std::string hostname, std::string port);
+		void add_message_to_queue(NetworkMessage *message, size_t message_size, std::string hostname, std::string port, int retry_count = 0);
 		void add_message_to_queue(NetworkMessage *message, size_t message_size, std::vector<std::string> hostnames, std::string port);
 };
 
