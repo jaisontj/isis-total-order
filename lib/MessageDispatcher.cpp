@@ -9,8 +9,6 @@
 
 using namespace std;
 
-int MessageDispatcher::MAX_DELAY = 5;
-
 MessageDispatcher::MessageDispatcher() {}
 
 MessageDispatcher& MessageDispatcher::get_instance() {
@@ -38,12 +36,10 @@ void MessageDispatcher::dispatch_messages() {
 	Log::d("Starting message dispatch...");
 	while(true) {
 		if (is_queue_empty()) {
-			if (delay < MAX_DELAY) delay *= 2;
-			Log::v("MessageQueue is empty. Sleeping for " + to_string(delay) + " seconds");
-			sleep(delay);
-			continue;
+			Log::d("MessageQueue is empty. Will restart dispatcher when new messages are added.");
+			is_dispatching.store(false);
+			break;
 		}
-		delay = 1;
 		auto const &minfo = get_queue_front();
 		try {
 			SenderSocket socket = SenderSocket(minfo.hostname, minfo.port);

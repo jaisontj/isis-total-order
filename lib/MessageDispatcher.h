@@ -16,8 +16,6 @@ class MessageDispatcher {
 		MessageDispatcher();
 		std::mutex m;
 		std::atomic<bool> is_dispatching;
-		int delay = 1;
-		static int MAX_DELAY;
 		std::queue<MessageInfo> mqueue;
 
 		MessageInfo get_queue_front();
