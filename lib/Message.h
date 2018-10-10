@@ -18,6 +18,7 @@ class Message {
 		void mark_as_deliverable(uint32_t final_seq, uint32_t proposer);
 		void process_message();
 		std::string get_as_string();
+		std::string get_as_string_without_process_id();
 };
 
 #endif
