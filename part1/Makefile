@@ -9,7 +9,7 @@ PORT = 35808
 HOSTFILE = hostnames.txt
 COUNT = 10
 
-LIB_FILES = ../lib/MessageQueue.cpp ../lib/Message.cpp ../lib/Log.cpp ../lib/LogHelper.cpp ../lib/helpers.cpp ../lib/DataMessageSeqTracker.cpp ../lib/ListenerSocket.cpp ../lib/SeqProvider.cpp ../lib/SocketImpl.cpp ../lib/MessageDispatcher.cpp ../lib/SenderSocker.cpp ../lib/ProcessInfoHelper.cpp ../lib/MessageHandler.cpp ../lib/DeliveryTracker.cpp ../lib/NetworkStatus.cpp ../lib/HandshakeTracker.cpp
+LIB_FILES = ../lib/MessageQueue.cpp ../lib/Message.cpp ../lib/Log.cpp ../lib/LogHelper.cpp ../lib/helpers.cpp ../lib/DataMessageSeqTracker.cpp ../lib/ListenerSocket.cpp ../lib/SeqProvider.cpp ../lib/SocketImpl.cpp ../lib/MessageDispatcher.cpp ../lib/SenderSocket.cpp ../lib/ProcessInfoHelper.cpp ../lib/MessageHandler.cpp ../lib/DeliveryTracker.cpp ../lib/NetworkStatus.cpp ../lib/HandshakeTracker.cpp
 
 all: clean build run
 
