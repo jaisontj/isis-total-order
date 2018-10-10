@@ -49,7 +49,7 @@ ProcessInfo ProcessInfoHelper::get_process_info(uint32_t id) {
 	for (auto const &process: ProcessInfoHelper::PROCESS_LIST) {
 		if (process.id == id) return process;
 	}
-	return {};
+	return { .hostname = "", .port = "" };
 }
 
 std::vector<ProcessInfo> ProcessInfoHelper::get_processes_not_in_list(std::vector<uint32_t> process_ids) {

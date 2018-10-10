@@ -18,10 +18,10 @@ MessageQueue& MessageQueue::get_instance() {
 
 void MessageQueue::log_mqueue() {
 	log_line();
-	Log::d("Printing currenty present messages in queue...");
-	Log::d("Count: " + to_string(mqueue.size()));
+	Log::v("MessageQueue:: Printing currenty present messages in queue...");
+	Log::d("MessageQueue:: Count: " + to_string(mqueue.size()));
 	for (Message message: mqueue) {
-		Log::d(message.get_as_string());
+		Log::v(message.get_as_string());
 	}
 	log_line();
 }
@@ -38,16 +38,17 @@ void MessageQueue::sort_mqueue() {
 			});
 }
 
-void MessageQueue::print_ordered_deliverables() {
+void MessageQueue::process_ordered_deliverables() {
 	log_mqueue();
 	sort_mqueue();
 	while(mqueue.begin() != mqueue.end()) {
 		Message msg = mqueue.front();
 		if (msg.mstatus != DELIVERABLE) {
-			Log::d("Head of queue is not marked to be delivered");
+			Log::v("MessageQueue:: Head of queue is not marked to be delivered");
 			break;
 		}
 		msg.process_message();
+		ordered_queue.push_back(msg);
 		mqueue.erase(mqueue.begin());
 	}
 }
@@ -63,20 +64,31 @@ void MessageQueue::add_undeliverable(
 	mqueue.push_back(Message(process_id,msg_id, sender_id, final_seq, proposer_id));
 }
 
-void MessageQueue::mark_as_deliverable(SeqMessage message) {
+int MessageQueue::mark_as_deliverable(SeqMessage message) {
 	lock_guard<mutex> lk(m);
-	Log::d("Going to mark message as deliverable");
-	bool marked = false;
+	Log::v("MessageQueue:: Going to mark message as deliverable");
 	for (vector<int>::size_type i = 0; i < mqueue.size(); i++) {
 		if (mqueue[i].sender_id == message.sender && mqueue[i].msg_id == message.msg_id) {
 			mqueue[i].mark_as_deliverable(message.final_seq, message.final_seq_proposer);
-			marked = true;
-			break;
+			process_ordered_deliverables();
+			return 1;
 		}
 	}
-	if (!marked) {
-		throw string("Could not find the message to mark. NOT POSSIBLE");
+	return -1;
+}
+
+bool MessageQueue::has_received_message(uint32_t msg_id, uint32_t sender_id) {
+	lock_guard<mutex> lk(m);
+	for (auto const &msg: ordered_queue) {
+		if (msg.sender_id == sender_id && msg.msg_id == msg_id) {
+			return true;
+		}
 	}
-	print_ordered_deliverables();
+	for (auto const &msg: mqueue) {
+		if (msg.sender_id == sender_id && msg.msg_id == msg_id) {
+			return true;
+		}
+	}
+	return false;
 }
 

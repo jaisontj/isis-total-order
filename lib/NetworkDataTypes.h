@@ -34,4 +34,11 @@ struct SeqMessage {
 	uint32_t final_seq_proposer; // the process id of the proposer who proposed the final_seq
 };
 
+struct SeqAckMessage {
+	uint32_t type;
+	uint32_t sender;
+	uint32_t msg_id;
+	uint32_t receiver;
+};
+
 #endif

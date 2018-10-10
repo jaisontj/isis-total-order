@@ -28,7 +28,7 @@ void ListenerSocket::start_listening(MessageHandler &handler) {
 			Log::e("Listener: Error in receiving message");
 		}
 		Log::v("Listener: packet is " + std::to_string(recv_bytes) + " bytes long");
-		Log::d("Received-> " + get_as_string(message));
+		Log::v("Listener: Received-> " + get_as_string(message));
 		handler.handle_message(*message);
 		delete message;
 	}

@@ -5,9 +5,6 @@
 #include "MessageInfo.h"
 
 std::string get_as_string(NetworkMessage *message);
-std::string get_as_string(DataMessage *message);
-std::string get_as_string(AckMessage *message);
-std::string get_as_string(SeqMessage *message);
 std::string get_as_string(MessageInfo message);
 void log_line();
 

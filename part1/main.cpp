@@ -4,16 +4,14 @@
 #include<unistd.h>
 #include<thread>
 
-#include "../lib/MessageQueue.h"
-#include "../lib/SeqProvider.h"
 #include "../lib/helpers.h"
-#include "../lib/DataMessageSeqTracker.h"
 #include "../lib/ListenerSocket.h"
 #include "../lib/Log.h"
-#include "../lib/LogHelper.h"
 #include "../lib/ProcessInfoHelper.h"
 #include "../lib/MessageHandler.h"
 #include "../lib/NetworkStatus.h"
+#include "../lib/DeliveryTracker.h"
+#include "../lib/HandshakeTracker.h"
 
 using namespace std;
 
@@ -23,14 +21,17 @@ ProcessInfo ProcessInfoHelper::SELF;
 bool NetworkStatus::DROPS_MESSAGE;
 int NetworkStatus::DELIVERY_DELAY;
 
+
 void start_msg_listener(CommandArgs c_args, MessageHandler *handler) {
 	Log::d("Starting message listener");
 	try {
 		ListenerSocket listener = ListenerSocket(c_args.port);
+		//Blocks
 		listener.start_listening(*handler);
 		listener.close_socket();
 	} catch (string m) {
 		Log::e(m);
+		//Re-try on error
 		start_msg_listener(c_args, handler);
 	}
 }
@@ -44,14 +45,30 @@ void send_data_messages(uint32_t count) {
 			.msg_id = i+1,
 			.data = 1234
 		};
-
+		//send to all processes, including self.
 		send_message((NetworkMessage *) &message, sizeof message, ProcessInfoHelper::PROCESS_LIST);
-
-		//await ack for message
-
 		//Send messages in 1 second intervals
 		sleep(1);
 	}
+}
+
+void wait_for_all_processes() {
+	Log::i("Main:: performing handshake with all processes");
+	//type 0 identifies as a handshake message.
+	DataMessage message = {
+		.type = 0,
+		.sender = ProcessInfoHelper::SELF.id,
+		.msg_id = 0,
+		.data = 0
+	};
+	//DeliveryTracker will handle retries.
+	while (HandshakeTracker::get_instance().get_num_verified() != ProcessInfoHelper::PROCESS_LIST.size()) {
+		vector<uint32_t> verified_ps = HandshakeTracker::get_instance().verified_processes;
+		vector<ProcessInfo> unverified_ps = ProcessInfoHelper::get_processes_not_in_list(verified_ps);
+		send_message((NetworkMessage *) &message, sizeof message, unverified_ps);
+		sleep(1);
+	};
+	Log::i("Main:: Handshake complete");
 }
 
 
@@ -61,8 +78,7 @@ int main(int argc, char* argv[]) {
 	ProcessInfoHelper::init_from_file(c_args.filename, c_args.port);
 	MessageHandler handler = MessageHandler(ProcessInfoHelper::PROCESS_LIST.size());
 	thread listener(start_msg_listener, c_args, &handler);
-	//TODO: replace this with a way to ensure that all processes are up
-	sleep(4);
+	sleep(5);
 	send_data_messages(c_args.msg_count);
 	//wait for listener thread.
 	listener.join();

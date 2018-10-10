@@ -33,28 +33,29 @@ bool MessageDispatcher::is_queue_empty() {
 }
 
 void MessageDispatcher::dispatch_messages() {
-	Log::d("Starting message dispatch...");
+	Log::d("MessageDispatcher:: Starting message dispatch...");
 	while(true) {
 		if (is_queue_empty()) {
-			Log::d("MessageQueue is empty. Will restart dispatcher when new messages are added.");
+			Log::d("MessageDispatcher:: MessageQueue is empty. Will restart dispatcher when new messages are added.");
 			is_dispatching.store(false);
 			break;
 		}
 		auto const &minfo = get_queue_front();
 		try {
 			SenderSocket socket = SenderSocket(minfo.hostname, minfo.port);
-			Log::d("Sending-> " + get_as_string((NetworkMessage *) &minfo.message));
+			Log::d("MessageDispatcher:: Sending-> " + get_as_string((NetworkMessage *) &minfo.message) + " Hostname->" + minfo.hostname + " Port->" + minfo.port + " RetryCount->" + to_string(minfo.retry_count));
+			//To handle for cases where the listener receives the message BEFORE this thread adds it to the Delivery tracker.
+			time_t delivery_time = DeliveryTracker::get_expected_delivery_time(minfo.message);
+			DeliveryTracker::get_instance().track_message(minfo, delivery_time);
+
 			int sent_bytes = socket.send((void *) &minfo.message, minfo.message_size);
-			if (sent_bytes != -1) {
-				time_t delivery_time = DeliveryTracker::get_expected_delivery_time(minfo.message);
-				DeliveryTracker::get_instance().track_message(minfo, delivery_time);
-				pop_queue();
-				Log::v("Sent " + to_string(sent_bytes) + " bytes to " + minfo.hostname);
-			}
+			//Dont care if it gets sent or not. Either ways, delivery tracker will handle it.
+			pop_queue();
+			Log::v("MessageDispatcher:: Sent " + to_string(sent_bytes) + " bytes to " + minfo.hostname);
 			socket.free_serve_info();
 			socket.close_socket();
 		} catch(string m) {
-			Log::e("Unable to create Sender Socket: " + m);
+			Log::e("MessageDispatcher:: Unable to create Sender Socket: " + m);
 		}
 	}
 }

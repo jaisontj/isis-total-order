@@ -11,8 +11,8 @@
 #include "NetworkDataTypes.h"
 #include "MessageDispatcher.h"
 
-#define NETWORK_DELAY 2
-#define MAX_RETRY_COUNT 2
+#define PREDICTED_NETWORK_DELAY 2
+#define MAX_RETRY_COUNT 5
 
 class DeliveryTracker {
 	private:
@@ -21,7 +21,7 @@ class DeliveryTracker {
 		DeliveryTracker();
 		std::vector<MessageInfo> undelivered_msgs;
 		std::vector<MessageInfo> get_undelivered_msgs();
-		void remove_undelivered_msg(MessageInfo m);
+		int remove_undelivered_msg(MessageInfo m);
 		void track_delivery();
 	public:
 		static DeliveryTracker& get_instance();
@@ -31,6 +31,8 @@ class DeliveryTracker {
 		static bool are_equal(MessageInfo m1, MessageInfo m2);
 		void track_message(MessageInfo m, time_t expected_delivery_time);
 		void mark_as_delivered(MessageInfo m);
+		void mark_as_delivered(NetworkMessage m, uint32_t type, std::string hostname, std::string port);
+		bool contains_undelivered_messages();
 		static void log_status(std::vector<MessageInfo> msgs);
 };
 

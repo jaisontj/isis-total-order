@@ -13,7 +13,8 @@ class MessageQueue {
 		MessageQueue();
 		std::mutex m;
 		std::vector<Message> mqueue;
-		void print_ordered_deliverables();
+		std::vector<Message> ordered_queue;
+		void process_ordered_deliverables();
 		void log_mqueue();
 		void sort_mqueue();
 	public:
@@ -21,7 +22,8 @@ class MessageQueue {
 		MessageQueue(MessageQueue const&);
 		void operator=(MessageQueue const&);
 		void add_undeliverable(uint32_t process_id, uint32_t msg_id, uint32_t sender_id, uint32_t final_seq, uint32_t proposer_id);
-		void mark_as_deliverable(SeqMessage message);
+		int mark_as_deliverable(SeqMessage message);
+		bool has_received_message(uint32_t msg_id, uint32_t sender_id);
 };
 
 #endif

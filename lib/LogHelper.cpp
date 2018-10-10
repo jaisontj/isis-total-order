@@ -6,26 +6,8 @@ std::string get_as_string(NetworkMessage *message) {
 	return "NetworkMessage: Type->" + std::to_string(message->type)
 		+ " SenderID->" + std::to_string(message->sender)
 		+ " MessageID->" + std::to_string(message->msg_id)
-		+ " DataOrProposedSequence->" + std::to_string(message->data_or_seq);
-}
-
-std::string get_as_string(DataMessage *message) {
-	return "DataMessage:Sender->" + std::to_string(message->sender)
-		+ " MessageID->" + std::to_string(message->msg_id)
-		+ " Data->" + std::to_string(message->data);
-}
-
-std::string get_as_string(AckMessage *message) {
-	return "AckMessage: Proposer->" + std::to_string(message->proposer)
-		+ " MessageID->" + std::to_string(message->msg_id)
-		+ " ProposedSequence->" + std::to_string(message->proposed_seq);
-}
-
-std::string get_as_string(SeqMessage *seq_msg) {
-	return "SeqMessage:  MessageID->" + std::to_string(seq_msg->msg_id)
-		+ " MessageSenderID->" + std::to_string(seq_msg->sender)
-		+ " FinalSequence->" + std::to_string(seq_msg->final_seq)
-		+ " SeqProposerID->" + std::to_string(seq_msg->final_seq_proposer);
+		+ " ThirdVariable->" + std::to_string(message->data_or_seq)
+		+ " FourthVariable->" + std::to_string(message->proposer_id);
 }
 
 void log_line() {
