@@ -30,10 +30,10 @@ void show_usage_and_exit() {
 }
 
 CommandArgs parse_cmg_args(int argc, char* argv[]) {
-	int opt, msg_count, temp_port;
+	int opt, msg_count, temp_port, x = -1;
 	string port = "";
 	string filepath;
-	while((opt = getopt(argc, argv, "p:h:c:v:d:l")) != -1) {
+	while((opt = getopt(argc, argv, "p:h:c:v:d:lx:")) != -1) {
 		switch(opt) {
 			case 'p':
 				temp_port = atoi(optarg);
@@ -61,6 +61,9 @@ CommandArgs parse_cmg_args(int argc, char* argv[]) {
 			case 'l':
 				NetworkStatus::DROPS_MESSAGE = true;
 				break;
+			case 'x':
+				x = atoi(optarg);
+				break;
 			default:
 				show_usage_and_exit();
 				break;
@@ -69,7 +72,7 @@ CommandArgs parse_cmg_args(int argc, char* argv[]) {
 
 	if(port == "" || msg_count == -1 || filepath == "")
 		show_usage_and_exit();
-	return (CommandArgs) { msg_count, port, filepath };
+	return (CommandArgs) { msg_count, port, filepath, x };
 }
 
 void send_message(NetworkMessage *message, size_t message_size, vector<ProcessInfo> processes) {

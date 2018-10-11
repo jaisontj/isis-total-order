@@ -64,6 +64,16 @@ void MessageQueue::add_undeliverable(
 	mqueue.push_back(Message(process_id,msg_id, sender_id, final_seq, proposer_id));
 }
 
+vector<Message> MessageQueue::get_ordered_messages() {
+	lock_guard<mutex> lk(m);
+	return ordered_queue;
+}
+
+vector<Message> MessageQueue::get_unordered_messages() {
+	lock_guard<mutex> lk(m);
+	return mqueue;
+}
+
 int MessageQueue::mark_as_deliverable(SeqMessage message) {
 	lock_guard<mutex> lk(m);
 	Log::v("MessageQueue:: Going to mark message as deliverable");

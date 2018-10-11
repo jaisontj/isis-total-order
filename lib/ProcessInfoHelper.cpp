@@ -67,3 +67,9 @@ std::vector<ProcessInfo> ProcessInfoHelper::get_processes_not_in_list(std::vecto
 	return absent_list;
 }
 
+std::vector<ProcessInfo> ProcessInfoHelper::get_all_other_processes() {
+	std::vector<uint32_t> list;
+	list.push_back(ProcessInfoHelper::SELF.id);
+	return get_processes_not_in_list(list);
+}
+

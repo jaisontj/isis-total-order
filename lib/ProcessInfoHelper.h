@@ -17,6 +17,7 @@ class ProcessInfoHelper {
 		static ProcessInfo SELF;
 		static void init_from_file(std::string filename, std::string port);
 		static std::vector<ProcessInfo> get_processes_not_in_list(std::vector<uint32_t> process_ids);
+		static std::vector<ProcessInfo> get_all_other_processes();
 		static ProcessInfo get_process_info(uint32_t id);
 };
 

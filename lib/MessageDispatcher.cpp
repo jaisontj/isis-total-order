@@ -3,6 +3,7 @@
 #include "Log.h"
 #include "LogHelper.h"
 #include "DeliveryTracker.h"
+#include "SnapshotHandler.h"
 
 #include <unistd.h>
 #include <thread>
@@ -54,6 +55,9 @@ void MessageDispatcher::dispatch_messages() {
 			Log::v("MessageDispatcher:: Sent " + to_string(sent_bytes) + " bytes to " + minfo.hostname);
 			socket.free_serve_info();
 			socket.close_socket();
+			if (sent_bytes != -1) {
+				SnapshotHandler::get_instance().handle_last_msg_sent(minfo);
+			}
 		} catch(string m) {
 			Log::e("MessageDispatcher:: Unable to create Sender Socket: " + m);
 		}

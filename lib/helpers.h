@@ -13,6 +13,7 @@ struct CommandArgs {
 	int msg_count;
 	string port;
 	string filename;
+	int x;
 };
 
 void show_usage_and_exit();
