@@ -11,7 +11,6 @@
 #include "../lib/MessageHandler.h"
 #include "../lib/NetworkStatus.h"
 #include "../lib/DeliveryTracker.h"
-#include "../lib/HandshakeTracker.h"
 
 using namespace std;
 
@@ -51,26 +50,6 @@ void send_data_messages(uint32_t count) {
 		sleep(1);
 	}
 }
-
-void wait_for_all_processes() {
-	Log::i("Main:: performing handshake with all processes");
-	//type 0 identifies as a handshake message.
-	DataMessage message = {
-		.type = 0,
-		.sender = ProcessInfoHelper::SELF.id,
-		.msg_id = 0,
-		.data = 0
-	};
-	//DeliveryTracker will handle retries.
-	while (HandshakeTracker::get_instance().get_num_verified() != ProcessInfoHelper::PROCESS_LIST.size()) {
-		vector<uint32_t> verified_ps = HandshakeTracker::get_instance().verified_processes;
-		vector<ProcessInfo> unverified_ps = ProcessInfoHelper::get_processes_not_in_list(verified_ps);
-		send_message((NetworkMessage *) &message, sizeof message, unverified_ps);
-		sleep(1);
-	};
-	Log::i("Main:: Handshake complete");
-}
-
 
 int main(int argc, char* argv[]) {
 	CommandArgs c_args = parse_cmg_args(argc, argv);
