@@ -21,9 +21,7 @@ void SnapshotHandler::handle_last_msg_sent(MessageInfo m) {
 	if (m.message.type == 2 || m.message.type == 3) {
 		last_seq_sent.store(m.message.data_or_seq);
 	}
-	Log::i("Current count of messages sent: " + std::to_string(num_messages_sent));
-	Log::i("Snapshot to be taken at: " + std::to_string(SnapshotHandler::X));
-	if (num_messages_sent == SnapshotHandler::X) {
+	if (num_messages_sent == SnapshotHandler::X && !has_saved_state) {
 		initiate_snapshot();
 	}
 }
@@ -41,6 +39,8 @@ void SnapshotHandler::mark_process(std::string message) {
 		marker_received_processes.push_back(message);
 	}
 
+	Log::i("Number of processes that received marker: " + std::to_string(marker_received_processes.size()));
+
 	if (marker_received_processes.size() == ProcessInfoHelper::PROCESS_LIST.size() - 1) {
 		std::cout<<"#################SNAPSHOT DONE"<<std::endl;
 	}
@@ -48,8 +48,10 @@ void SnapshotHandler::mark_process(std::string message) {
 
 void SnapshotHandler::handle_marker(Marker m) {
 	if (m.type != 1 || m.sender > ProcessInfoHelper::PROCESS_LIST.size()){
+		Log::i("SnapshotHandler:: Received message on TCP. But it was not a marker.");
 		return;
 	}
+	Log::i("SnapshotHandler:: Received marker from " + std::to_string(m.sender));
 	mark_process(std::to_string(m.sender));
 	if (!has_saved_state) {
 		initiate_snapshot();
@@ -99,16 +101,18 @@ void SnapshotHandler::send_marker_to_all() {
 			std::string port = process.port;
 			try {
 				TcpSender sender = TcpSender(hostname, port);
-				std::string marker = std::to_string(ProcessInfoHelper::SELF.id);
-				sender.send((void *) &marker, sizeof marker);
-				sender.close_socket();
+				Marker m = { .type = 1, .sender = ProcessInfoHelper::SELF.id};
+				Log::i("Sending marker to : " + hostname + " at port: " + port + "Marker: " + std::to_string(m.sender));
+				sender.send((void *) &m, sizeof m);
+				sender.free_serve_info();
+				//sender.close_socket();
 				sent_list.push_back(process.id);
 			} catch(std::string m) {
 				Log::e(m);
 			}
 		}
 		if (sent_list.size() == processes.size()) {
-			Log::v("Sent marker to all processes");
+			Log::i("Sent marker to all processes");
 		} else {
 			Log::i("Sent marker to " + std::to_string(sent_list.size()) + " processes");
 		}

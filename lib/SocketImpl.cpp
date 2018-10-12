@@ -29,6 +29,7 @@ struct addrinfo SocketImpl::init_dgram_hints(int type, int flags) {
 	struct addrinfo hints;
 	memset(&hints, 0, sizeof(hints));
 	//Can set the below to AF_INET to force IPv4
+	//hints.ai_family = AF_INET;
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = type;
 	if (flags != -1)

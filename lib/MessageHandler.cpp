@@ -7,7 +7,6 @@
 #include "helpers.h"
 #include "DeliveryTracker.h"
 #include "NetworkStatus.h"
-#include "HandshakeTracker.h"
 
 #include <thread>
 
@@ -116,11 +115,6 @@ void MessageHandler::handle_message(NetworkMessage message) {
 
 void MessageHandler::handle_message_diff_thread(NetworkMessage message, int delay) {
 	NetworkStatus::SIMULATE_DELAY(delay);
-
-	if (message.type == 0) {
-		HandshakeTracker::get_instance().handle_handshake(message.sender);
-		return;
-	}
 	if (message.type == 1) {
 		handle_data_message((DataMessage *) &message);
 		return;

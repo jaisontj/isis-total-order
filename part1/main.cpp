@@ -20,7 +20,6 @@ ProcessInfo ProcessInfoHelper::SELF;
 bool NetworkStatus::DROPS_MESSAGE;
 int NetworkStatus::DELIVERY_DELAY;
 
-
 void start_msg_listener(CommandArgs c_args, MessageHandler *handler) {
 	Log::d("Starting message listener");
 	try {

@@ -13,7 +13,7 @@
 #include "Log.h"
 
 TcpSender::TcpSender(std::string hostname, std::string port): SocketImpl(SOCK_STREAM, -1, hostname, port, -1, false) {
-	Log::v("TcpSender:: Created Tcp Sender Socket: Hostname->" + hostname + " Port->" + port);
+	Log::v("TcpSender:: Created Tcp Sender Socket: Hostname->" + hostname + " Port->" + port + " fd->" + std::to_string(this->fd));
 	Log::v("TcpSender:: Trying to connect socket to address");
 	if (connect(fd, p->ai_addr, p->ai_addrlen) == -1) {
 		close(fd);

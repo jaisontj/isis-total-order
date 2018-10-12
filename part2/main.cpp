@@ -62,7 +62,7 @@ void start_tcp_listener(CommandArgs c_args) {
 		listener.start_listening(&tcp_message_handler);
 		listener.close_socket();
 	} catch (string m) {
-		Log::e(m);
+		Log::e("MAIN:: Error listening on tcp: " + m);
 		start_tcp_listener(c_args);
 	}
 }
@@ -75,7 +75,7 @@ int main(int argc, char* argv[]) {
 	thread tcp_listener(start_tcp_listener, c_args);
 	MessageHandler handler = MessageHandler(ProcessInfoHelper::PROCESS_LIST.size());
 	thread listener(start_msg_listener, c_args, &handler);
-	sleep(5);
+	sleep(10);
 	send_data_messages(c_args.msg_count);
 	listener.join();
 	tcp_listener.join();
