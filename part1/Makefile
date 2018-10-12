@@ -4,6 +4,7 @@ CC = g++
 # compiler flags:
 CFLAGS  = -std=c++11 -Wall -pthread
 
+OUTPUT = prj1_tm
 TARGET = main
 PORT = 35808
 HOSTFILE = hostnames.txt
@@ -11,45 +12,21 @@ COUNT = 10
 
 LIB_FILES = ../lib/MessageQueue.cpp ../lib/Message.cpp ../lib/Log.cpp ../lib/LogHelper.cpp ../lib/helpers.cpp ../lib/DataMessageSeqTracker.cpp ../lib/ListenerSocket.cpp ../lib/SeqProvider.cpp ../lib/DgramSocket.cpp ../lib/MessageDispatcher.cpp ../lib/SenderSocker.cpp ../lib/ProcessInfoHelper.cpp ../lib/MessageHandler.cpp ../lib/DeliveryTracker.cpp ../lib/NetworkStatus.cpp ../lib/HandshakeTracker.cpp
 
-all: clean build run
-
-alldebug: clean build rundebug
-
-cleanandbuild: clean build
-
-real: clean build runreal
-
-buildccs: cleanccs build
-
 build: $(TARGET)
 
 $(TARGET): $(TARGET).cpp
-	$(CC) $(CFLAGS) $(LIB_FILES) $(TARGET).cpp -o $(TARGET)
+	$(CC) $(CFLAGS) $(LIB_FILES) $(TARGET).cpp -o $(OUTPUT)
 
 run:
-	./$(TARGET) -p $(PORT) -h $(HOSTFILE) -c $(COUNT)
-
-rundebug:
-	./$(TARGET) -p $(PORT) -h $(HOSTFILE) -c $(COUNT) -v debug
-
-runinfo:
-	./$(TARGET) -p $(PORT) -h $(HOSTFILE) -c $(COUNT) -v info
-
-runwithdelay:
-	./$(TARGET) -p $(PORT) -h $(HOSTFILE) -c $(COUNT) -v error -d 2
-
-runwithloss:
-	./$(TARGET) -p $(PORT) -h $(HOSTFILE) -c $(COUNT) -v -l
-
-runwithlossanddelay:
-	./$(TARGET) -p $(PORT) -h $(HOSTFILE) -c $(COUNT) -v debug -d 2 -l
-
-runreal:
-	./$(TARGET) -p $(PORT) -h $(HOSTFILE) -c $(COUNT) -v error -d 2 -l
+	./$(OUTPUT) -p $(PORT) -h $(HOSTFILE) -c $(COUNT)
 
 clean:
-	rm -r $(TARGET)
+	rm -f $(OUTPUT)
+	rm -f *.txt
 
-cleanccs:
-	rm Process-*.txt
-	mv temp.txt hostnames.txt
+generate:
+	echo "vdi-linux-030.ccs.neu.edu" >> hostnames.txt
+	echo "vdi-linux-031.ccs.neu.edu" >> hostnames.txt
+	echo "vdi-linux-032.ccs.neu.edu" >> hostnames.txt
+	echo "vdi-linux-033.ccs.neu.edu" >> hostnames.txt
+	echo "vdi-linux-034.ccs.neu.edu" >> hostnames.txt
