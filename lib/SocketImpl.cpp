@@ -1,4 +1,4 @@
-#include "DgramSocket.h"
+#include "SocketImpl.h"
 #include "Log.h"
 
 #include <netdb.h>
@@ -10,7 +10,7 @@
 using namespace std;
 
 // get sockaddr IPv4 or IPv6
-void* DgramSocket::get_in_addr(struct sockaddr *sa) {
+void* SocketImpl::get_in_addr(struct sockaddr *sa) {
 	if (sa->sa_family == AF_INET) {
 		return &(((struct sockaddr_in*)sa)->sin_addr);
 	}
@@ -18,25 +18,26 @@ void* DgramSocket::get_in_addr(struct sockaddr *sa) {
 	return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
-string DgramSocket::get_packet_address(sockaddr_storage recv_addr) {
+string SocketImpl::get_packet_address(sockaddr_storage recv_addr) {
 	char s[INET6_ADDRSTRLEN];
 	inet_ntop(recv_addr.ss_family, get_in_addr((struct sockaddr *)&recv_addr), s, sizeof(s));
 	cout<<"Listener: got packet from "<<s<<endl;
 	return s;
 }
 
-struct addrinfo DgramSocket::init_dgram_hints(int flags) {
+struct addrinfo SocketImpl::init_dgram_hints(int type, int flags) {
 	struct addrinfo hints;
 	memset(&hints, 0, sizeof(hints));
 	//Can set the below to AF_INET to force IPv4
+	//hints.ai_family = AF_INET;
 	hints.ai_family = AF_UNSPEC;
-	hints.ai_socktype = SOCK_DGRAM;
+	hints.ai_socktype = type;
 	if (flags != -1)
 		hints.ai_flags = flags;
 	return hints;
 }
 
-struct addrinfo* DgramSocket::get_addr_info(
+struct addrinfo* SocketImpl::get_addr_info(
 		const char *hostname,
 		const char *port,
 		struct addrinfo *hints) {
@@ -53,20 +54,22 @@ struct addrinfo* DgramSocket::get_addr_info(
 	return servinfo;
 }
 
-string DgramSocket::get_socket_ip(addrinfo *p) {
+string SocketImpl::get_socket_ip(addrinfo *p) {
 	char ipstr[INET6_ADDRSTRLEN];
 	void *addr = (char *)ipstr;
 	inet_ntop(p->ai_family, addr, ipstr, sizeof ipstr);
 	return ipstr;
 }
 
-DgramSocket::DgramSocket(
+SocketImpl::SocketImpl(
+		int type,
 		int hint_flag,
 		string hostname,
 		string port,
-		int should_reuse_addr
+		int should_reuse_addr,
+		bool should_bind_to_address
 		) {
-	struct addrinfo hints = init_dgram_hints(hint_flag);
+	struct addrinfo hints = init_dgram_hints(type, hint_flag);
 	this->servinfo =  get_addr_info(hostname == "" ? NULL : hostname.c_str(), port.c_str(), &hints);
 	int socket_fd;
 	struct addrinfo *p;
@@ -98,14 +101,23 @@ DgramSocket::DgramSocket(
 	this->port = port;
 	this->fd = socket_fd;
 	this->p = p;
+
+	if (should_bind_to_address) {
+		Log::v("SocketImpl:: Trying to bind socket to address");
+		if (::bind(this->fd, p->ai_addr, p->ai_addrlen) == -1) {
+			close(this->fd);
+			perror("SocketImpl:: Failed to bind socket");
+			throw std::string ("SocketImpl:: Failed to bind socket");
+		}
+	}
 }
 
-void DgramSocket::free_serve_info() {
+void SocketImpl::free_serve_info() {
 	Log::v("Freeing servinfo");
 	freeaddrinfo(servinfo);
 }
 
-void DgramSocket::close_socket() {
+void SocketImpl::close_socket() {
 	Log::v("Closing socket: " + to_string(fd));
 	close(fd);
 }

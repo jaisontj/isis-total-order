@@ -24,6 +24,8 @@ class MessageQueue {
 		void add_undeliverable(uint32_t process_id, uint32_t msg_id, uint32_t sender_id, uint32_t final_seq, uint32_t proposer_id);
 		int mark_as_deliverable(SeqMessage message);
 		bool has_received_message(uint32_t msg_id, uint32_t sender_id);
+		std::vector<Message> get_unordered_messages();
+		std::vector<Message> get_ordered_messages();
 };
 
 #endif

@@ -5,7 +5,7 @@
 #include"SenderSocket.h"
 #include "Log.h"
 
-SenderSocket::SenderSocket(std::string hostname, std::string port): DgramSocket(-1, hostname, port, 1) {
+SenderSocket::SenderSocket(std::string hostname, std::string port): SocketImpl(SOCK_DGRAM, -1, hostname, port, 1, false) {
 	Log::v("Created Sender Socket: Hostname->" + hostname + " Port->" + port);
 }
 

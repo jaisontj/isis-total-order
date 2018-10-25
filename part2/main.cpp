@@ -10,7 +10,8 @@
 #include "../lib/ProcessInfoHelper.h"
 #include "../lib/MessageHandler.h"
 #include "../lib/NetworkStatus.h"
-#include "../lib/DeliveryTracker.h"
+#include "../lib/TcpListener.h"
+#include "../lib/SnapshotHandler.h"
 
 using namespace std;
 
@@ -19,6 +20,7 @@ vector<ProcessInfo> ProcessInfoHelper::PROCESS_LIST;
 ProcessInfo ProcessInfoHelper::SELF;
 bool NetworkStatus::DROPS_MESSAGE;
 int NetworkStatus::DELIVERY_DELAY;
+int SnapshotHandler::X = -1;
 
 void start_msg_listener(CommandArgs c_args, MessageHandler *handler) {
 	Log::d("Starting message listener");
@@ -50,15 +52,32 @@ void send_data_messages(uint32_t count) {
 	}
 }
 
+void tcp_message_handler(Marker m) {
+	SnapshotHandler::get_instance().handle_marker(m);
+}
+
+void start_tcp_listener(CommandArgs c_args) {
+	try {
+		TcpListener listener = TcpListener(c_args.port);
+		listener.start_listening(&tcp_message_handler);
+		listener.close_socket();
+	} catch (string m) {
+		Log::e("MAIN:: Error listening on tcp: " + m);
+		start_tcp_listener(c_args);
+	}
+}
+
 int main(int argc, char* argv[]) {
 	CommandArgs c_args = parse_cmg_args(argc, argv);
-	//Read hostfile for a list of hosts and their respective line num
 	ProcessInfoHelper::init_from_file(c_args.filename, c_args.port);
+	if (c_args.x > 0)
+		SnapshotHandler::get_instance().X = c_args.x;
+	thread tcp_listener(start_tcp_listener, c_args);
 	MessageHandler handler = MessageHandler(ProcessInfoHelper::PROCESS_LIST.size());
 	thread listener(start_msg_listener, c_args, &handler);
-	sleep(5);
+	sleep(10);
 	send_data_messages(c_args.msg_count);
-	//wait for listener thread.
 	listener.join();
+	tcp_listener.join();
 	return 0;
 }

@@ -6,13 +6,7 @@
 #include <netdb.h>
 #include <string>
 
-ListenerSocket::ListenerSocket(std::string port) : DgramSocket(AI_PASSIVE, "", port, 1) {
-	Log::v("Listener: Trying to bind socket to address");
-	if (::bind(this->fd, p->ai_addr, p->ai_addrlen) == -1) {
-		close(this->fd);
-		perror("Listener: Failed to bind socket");
-		throw std::string ("Listener: Failed to bind socket");
-	}
+ListenerSocket::ListenerSocket(std::string port) : SocketImpl(SOCK_DGRAM, AI_PASSIVE, "", port, 1, true) {
 	free_serve_info();
 }
 
