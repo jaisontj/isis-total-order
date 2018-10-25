@@ -51,7 +51,7 @@ void TcpListener::start_listening(TcpMessageHandler handler) {
 				//New Connection
 				if (i == this->fd) {
 					struct sockaddr_storage remoteaddr;
-					socklen_t addrlen;
+					socklen_t addrlen = sizeof remoteaddr;
 					newfd = accept(this->fd, (sockaddr *) &remoteaddr, &addrlen);
 					if (newfd == -1) {
 						perror("TcpListener: accept");
